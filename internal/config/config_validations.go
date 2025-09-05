@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 )
 
@@ -12,6 +13,7 @@ func (c *configFields) ValidateFields() error {
 
 	errorsList = append(errorsList, c.validateRequired()...)
 	errorsList = append(errorsList, c.validateFilePaths()...)
+	errorsList = append(errorsList, c.validateWorkers())
 
 	if len(errorsList) > 0 {
 		errorMessage := "Errors found: " + strings.Join(errorsList, ", ")
@@ -53,7 +55,22 @@ func (c configFields) validateFilePaths() []string {
 			errorsList = append(errorsList, fmt.Sprintf("File not found: %s", filePath))
 		}
 	}
-
 	return errorsList
+}
 
+func (c configFields) validateWorkers() string {
+	availableCPU := runtime.NumCPU()
+
+	allowed := int(float64(availableCPU) * 1.2)
+
+	if c.Workers > allowed {
+		err := fmt.Sprintf("Workers (%d) exceed 20%% above available CPUs (%d).", c.Workers, availableCPU)
+		return err
+	}
+
+	if c.Workers > availableCPU {
+		fmt.Printf("Workers (%d) exceed number of CPUs (%d). Performance may degrade.\n", c.Workers, availableCPU)
+	}
+
+	return ""
 }
