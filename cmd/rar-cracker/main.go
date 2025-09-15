@@ -10,18 +10,12 @@ import (
 func main() {
 	appConfig := config.New()
 
-	configWarnings, err := appConfig.Validate()
-
+	configWarnings, configErrors := appConfig.Setup()
 	if len(configWarnings) > 0 {
-		fmt.Println("(WARNINGS):")
-
-		for _, warning := range configWarnings {
-			fmt.Printf("  %s\n", warning)
-		}
+		fmt.Println(configWarnings)
 	}
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\n%s ", err)
+	if configErrors != nil {
+		fmt.Fprintf(os.Stderr, "%s ", configErrors)
 		os.Exit(1)
 	}
 
