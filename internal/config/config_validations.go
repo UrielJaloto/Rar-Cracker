@@ -32,7 +32,7 @@ func (c *configFields) Validate() (warnings []string, err error) {
 	allErrors = append(allErrors, combinationsErrors...)
 
 	if len(allErrors) > 0 {
-		errorMessage := "Errors found{\n  " + strings.Join(allErrors, "\n  ") + "\n}\nExecution blocked."
+		errorMessage := "(ERRORS):\n  " + strings.Join(allErrors, "\n  ") + "\nExecution blocked."
 		return allWarnings, errors.New(errorMessage)
 	}
 	return allWarnings, nil
@@ -77,10 +77,10 @@ func (c *configFields) validateWorkers() (warnings []string, errors []string) {
 	allowed := int(float64(availableCPU) * 1.2)
 
 	if c.Workers > allowed {
-		errors = append(errors, fmt.Sprintf("Workers (%d) exceed 20%% above available CPUs (%d)", c.Workers, availableCPU))
+		errors = append(errors, fmt.Sprintf("Workers (%d) exceed number of CPUs (%d)", c.Workers, availableCPU))
 
 	} else if c.Workers > availableCPU {
-		warnings = append(warnings, fmt.Sprintf("Workers (%d) exceed number of CPUs (%d). Performance may degrade", c.Workers, availableCPU))
+		warnings = append(warnings, fmt.Sprintf("Workers (%d) exceed 20%% above available CPUs (%d). Performance may degrade", c.Workers, availableCPU))
 	}
 
 	return warnings, errors
