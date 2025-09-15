@@ -10,41 +10,34 @@ import (
 )
 
 const (
-	WARNING_TREASHOLD = 250000000
-	ERROR_TREASHOLD   = 1000000000000
+	WARNING_TRESHOLD = 250000000
+	ERROR_TRESHOLD   = 1000000000000
 )
 
-func warningBuilder(warnings []string) string {
-	if len(warnings) == 0 {
-		return ""
-	}
-
-	var stringBuilder strings.Builder
-	stringBuilder.WriteString("(WARNINGS):\n    ")
-	stringBuilder.WriteString(strings.Join(warnings, "\n    ") + "\n")
-
-	return stringBuilder.String()
-}
-
-func errorBuilder(errorsList []string) error {
-	if len(errorsList) == 0 {
+func errorBuilder(errorMessages []string) error {
+	if len(errorMessages) == 0 {
 		return nil
 	}
 
-	var stringBuilder strings.Builder
-	stringBuilder.WriteString("(ERRORS):\n    ")
-	stringBuilder.WriteString(strings.Join(errorsList, "\n    ") + "\n")
-	stringBuilder.WriteString("\nExecution blocked.")
-
-	return errors.New(stringBuilder.String())
+	var errs []error
+	for _, message := range errorMessages {
+		errs = append(errs, errors.New(message))
+	}
+	return errors.Join(errs...)
 }
 
-func (c *configFields) Setup() (warnings string, err error) {
+func (c *configFields) Setup() (warnings []string, err error) {
 	var allWarnings, allErrors []string
 
 	allErrors = append(allErrors, c.validateRequired()...)
+	if len(allErrors) > 0 {
+		return allWarnings, errorBuilder(allErrors)
+	}
 
 	allErrors = append(allErrors, c.validateFilePaths()...)
+	if len(allErrors) > 0 {
+		return allWarnings, errorBuilder(allErrors)
+	}
 
 	workersWarning, workersErrors := c.validateWorkers()
 	allWarnings = append(allWarnings, workersWarning...)
@@ -52,18 +45,16 @@ func (c *configFields) Setup() (warnings string, err error) {
 
 	if fileError := c.LoadCharset(); fileError != nil {
 		allErrors = append(allErrors, fileError.Error())
-		return warningBuilder(allWarnings), errorBuilder(allErrors)
+		return allWarnings, errorBuilder(allErrors)
 	}
 
 	combinationsWarnings, combinationsErrors := c.validateCombinations()
 	allWarnings = append(allWarnings, combinationsWarnings...)
 	allErrors = append(allErrors, combinationsErrors...)
-
 	if len(allErrors) > 0 {
-
-		return warningBuilder(allWarnings), errorBuilder(allErrors)
+		return allWarnings, errorBuilder(allErrors)
 	}
-	return warningBuilder(allWarnings), nil
+	return allWarnings, nil
 }
 
 func (c *configFields) validateRequired() (errorsList []string) {
@@ -130,16 +121,16 @@ func (c *configFields) validateCombinations() (warnings []string, errorsList []s
 	totalCombinations := big.NewInt(0)
 	charsetSize := big.NewInt(charsetLength)
 	expoent := big.NewInt(remainingLength)
-	errorTreashold := big.NewInt(ERROR_TREASHOLD)
-	warningTreashold := big.NewInt(WARNING_TREASHOLD)
+	errorTreashold := big.NewInt(ERROR_TRESHOLD)
+	warningTreashold := big.NewInt(WARNING_TRESHOLD)
 
 	totalCombinations.Exp(charsetSize, expoent, nil)
 
 	if totalCombinations.Cmp(errorTreashold) >= 0 {
-		errorsList = append(errorsList, fmt.Sprintf("Total combinations (%s) exceded ERROR_TREASHOLD (%d)", totalCombinations.String(), ERROR_TREASHOLD))
+		errorsList = append(errorsList, fmt.Sprintf("Total combinations (%s) exceded ERROR_TREASHOLD (%d)", totalCombinations.String(), ERROR_TRESHOLD))
 
 	} else if totalCombinations.Cmp(warningTreashold) >= 0 {
-		warnings = append(warnings, fmt.Sprintf("Total combinations (%s) exceded WARNING_TREASHOLD (%d)", totalCombinations.String(), WARNING_TREASHOLD))
+		warnings = append(warnings, fmt.Sprintf("Total combinations (%s) exceded WARNING_TREASHOLD (%d)", totalCombinations.String(), WARNING_TRESHOLD))
 	}
 
 	return warnings, errorsList
