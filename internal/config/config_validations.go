@@ -120,11 +120,11 @@ func (c *configFields) validateCombinations() (warnings []string, errorsList []s
 
 	totalCombinations := big.NewInt(0)
 	charsetSize := big.NewInt(charsetLength)
-	expoent := big.NewInt(remainingLength)
+	exponent := big.NewInt(remainingLength)
 	errorTreashold := big.NewInt(ERROR_TRESHOLD)
 	warningTreashold := big.NewInt(WARNING_TRESHOLD)
 
-	totalCombinations.Exp(charsetSize, expoent, nil)
+	totalCombinations.Exp(charsetSize, exponent, nil)
 
 	if totalCombinations.Cmp(errorTreashold) >= 0 {
 		errorsList = append(errorsList, fmt.Sprintf("Total combinations (%s) exceded ERROR_TREASHOLD (%d)", totalCombinations.String(), ERROR_TRESHOLD))
