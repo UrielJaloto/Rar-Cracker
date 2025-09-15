@@ -50,10 +50,11 @@ func (c *configFields) LoadCharset() (err error) {
 
 func (c *configFields) PrintFields() {
 	fmt.Printf("Configurações carregadas:\n")
-	fmt.Printf("  Charset Path   : %s\n", c.CharsetPath)
-	fmt.Printf("  File Path      : %s\n", c.FilePath)
-	fmt.Printf("  Known Part     : %s\n", c.KnownPart)
-	fmt.Printf("  State File     : %s\n", c.StateFilePath)
-	fmt.Printf("  Max Length     : %d\n", c.MaxLenght)
-	fmt.Printf("  Workers        : %d\n", c.Workers)
+	fmt.Printf("    Charset Path   : %s\n", c.CharsetPath)
+	fmt.Printf("    File Path      : %s\n", c.FilePath)
+	fmt.Printf("    Known Part     : %s\n", c.KnownPart)
+	fmt.Printf("    State File     : %s\n", c.StateFilePath)
+	fmt.Printf("    Max Length     : %d\n", c.MaxLenght)
+	fmt.Printf("    Workers        : %d\n", c.Workers)
+	fmt.Printf("    Charset        : %q\n", c.Charset)
 }
