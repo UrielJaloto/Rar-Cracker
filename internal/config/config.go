@@ -20,7 +20,7 @@ type OptionalParameters struct {
 type configFields struct {
 	*RequiredParameters
 	*OptionalParameters
-	Charset []string
+	Charset []rune
 }
 
 func (c configFields) PrintFields() {
@@ -33,11 +33,11 @@ func (c configFields) PrintFields() {
 	fmt.Printf("  Workers        : %d\n", c.Workers)
 }
 
-func ParseConfig() *configFields {
+func New() *configFields {
 	config := configFields{
 		RequiredParameters: &RequiredParameters{},
 		OptionalParameters: &OptionalParameters{},
-		Charset:            []string{},
+		Charset:            []rune{},
 	}
 
 	flag.StringVar(&config.CharsetPath, "Charset", "", "Path for the charset (Required)")
