@@ -3,6 +3,8 @@ package config
 import (
 	"flag"
 	"fmt"
+
+	"github.com/UrielJaloto/Rar-Cracker/internal/utils"
 )
 
 type RequiredParameters struct {
@@ -23,16 +25,6 @@ type configFields struct {
 	Charset []rune
 }
 
-func (c configFields) PrintFields() {
-	fmt.Printf("Configurações carregadas:\n")
-	fmt.Printf("  Charset Path   : %s\n", c.CharsetPath)
-	fmt.Printf("  File Path      : %s\n", c.FilePath)
-	fmt.Printf("  Known Part     : %s\n", c.KnownPart)
-	fmt.Printf("  State File     : %s\n", c.StateFilePath)
-	fmt.Printf("  Max Length     : %d\n", c.MaxLenght)
-	fmt.Printf("  Workers        : %d\n", c.Workers)
-}
-
 func New() *configFields {
 	config := configFields{
 		RequiredParameters: &RequiredParameters{},
@@ -49,4 +41,19 @@ func New() *configFields {
 	flag.Parse()
 
 	return &config
+}
+
+func (c *configFields) LoadCharset() (err error) {
+	c.Charset, err = utils.ReadChars(c.CharsetPath)
+	return err
+}
+
+func (c *configFields) PrintFields() {
+	fmt.Printf("Configurações carregadas:\n")
+	fmt.Printf("  Charset Path   : %s\n", c.CharsetPath)
+	fmt.Printf("  File Path      : %s\n", c.FilePath)
+	fmt.Printf("  Known Part     : %s\n", c.KnownPart)
+	fmt.Printf("  State File     : %s\n", c.StateFilePath)
+	fmt.Printf("  Max Length     : %d\n", c.MaxLenght)
+	fmt.Printf("  Workers        : %d\n", c.Workers)
 }
