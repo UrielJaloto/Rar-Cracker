@@ -20,24 +20,22 @@ type OptionalParameters struct {
 }
 
 type configFields struct {
-	*RequiredParameters
-	*OptionalParameters
+	RequiredParameters
+	OptionalParameters
 	Charset []rune
 }
 
 func New() *configFields {
 	config := configFields{
-		RequiredParameters: &RequiredParameters{},
-		OptionalParameters: &OptionalParameters{},
-		Charset:            []rune{},
+		Charset: []rune{},
 	}
 
-	flag.StringVar(&config.CharsetPath, "Charset", "", "Path for the charset (Required)")
-	flag.StringVar(&config.FilePath, "File", "", "Path for the file (Required)")
-	flag.StringVar(&config.KnownPart, "KnownPart", "", "Known part of the password (Optional)")
-	flag.StringVar(&config.StateFilePath, "StateFile", "./state-file.json", "Path for the state file (Optional)")
-	flag.IntVar(&config.MaxLenght, "MaxLength", 13, "Maximum length of the password (Optional)")
-	flag.IntVar(&config.Workers, "Workers", 1, "Number of workers")
+	flag.StringVar(&config.CharsetPath, "charset", "", "Path for the charset (Required)")
+	flag.StringVar(&config.FilePath, "file", "", "Path for the file (Required)")
+	flag.StringVar(&config.KnownPart, "knownPart", "", "Known part of the password (Optional)")
+	flag.StringVar(&config.StateFilePath, "stateFile", "./state-file.json", "Path for the state file (Optional)")
+	flag.IntVar(&config.MaxLenght, "maxLength", 13, "Maximum length of the password (Optional)")
+	flag.IntVar(&config.Workers, "workers", 1, "Number of workers")
 	flag.Parse()
 
 	return &config
