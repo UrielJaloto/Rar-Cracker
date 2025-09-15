@@ -14,42 +14,70 @@ const (
 	ERROR_TREASHOLD   = 1000000000000
 )
 
-func (c *configFields) Validate() (warnings []string, err error) {
-	var (
-		allWarnings []string
-		allErrors   []string
-	)
+func warningBuilder(warnings []string) string {
+	if len(warnings) == 0 {
+		return ""
+	}
+
+	var stringBuilder strings.Builder
+	stringBuilder.WriteString("(WARNINGS):\n    ")
+	stringBuilder.WriteString(strings.Join(warnings, "\n    ") + "\n")
+
+	return stringBuilder.String()
+}
+
+func errorBuilder(errorsList []string) error {
+	if len(errorsList) == 0 {
+		return nil
+	}
+
+	var stringBuilder strings.Builder
+	stringBuilder.WriteString("(ERRORS):\n    ")
+	stringBuilder.WriteString(strings.Join(errorsList, "\n    ") + "\n")
+	stringBuilder.WriteString("\nExecution blocked.")
+
+	return errors.New(stringBuilder.String())
+}
+
+func (c *configFields) Setup() (warnings string, err error) {
+	var allWarnings, allErrors []string
 
 	allErrors = append(allErrors, c.validateRequired()...)
+
 	allErrors = append(allErrors, c.validateFilePaths()...)
 
 	workersWarning, workersErrors := c.validateWorkers()
 	allWarnings = append(allWarnings, workersWarning...)
 	allErrors = append(allErrors, workersErrors...)
 
+	if fileError := c.LoadCharset(); fileError != nil {
+		allErrors = append(allErrors, fileError.Error())
+		return warningBuilder(allWarnings), errorBuilder(allErrors)
+	}
+
 	combinationsWarnings, combinationsErrors := c.validateCombinations()
 	allWarnings = append(allWarnings, combinationsWarnings...)
 	allErrors = append(allErrors, combinationsErrors...)
 
 	if len(allErrors) > 0 {
-		errorMessage := "(ERRORS):\n  " + strings.Join(allErrors, "\n  ") + "\nExecution blocked."
-		return allWarnings, errors.New(errorMessage)
+
+		return warningBuilder(allWarnings), errorBuilder(allErrors)
 	}
-	return allWarnings, nil
+	return warningBuilder(allWarnings), nil
 }
 
-func (c *configFields) validateRequired() (errors []string) {
+func (c *configFields) validateRequired() (errorsList []string) {
 	if strings.TrimSpace(c.CharsetPath) == "" {
-		errors = append(errors, "Charset is required")
+		errorsList = append(errorsList, "Charset is required")
 	}
 	if strings.TrimSpace(c.FilePath) == "" {
-		errors = append(errors, "File is required")
+		errorsList = append(errorsList, "File is required")
 	}
 
-	return errors
+	return errorsList
 }
 
-func (c *configFields) validateFilePaths() (errors []string) {
+func (c *configFields) validateFilePaths() (errorsList []string) {
 	filePathsToValidate := map[string]string{
 		"Charset": c.CharsetPath,
 		"Archive": c.FilePath,
@@ -61,42 +89,42 @@ func (c *configFields) validateFilePaths() (errors []string) {
 			continue
 		}
 		if _, err := os.Stat(path); os.IsNotExist(err) {
-			errors = append(errors, fmt.Sprintf("%s file not found: (%s)", name, path))
+			errorsList = append(errorsList, fmt.Sprintf("%s file not found: (%s)", name, path))
 		}
 	}
-	return errors
+	return errorsList
 }
 
-func (c *configFields) validateWorkers() (warnings []string, errors []string) {
+func (c *configFields) validateWorkers() (warnings []string, errorsList []string) {
 	if c.Workers <= 0 {
-		errors = append(errors, fmt.Sprintf("Workers (%d) must be positive", c.Workers))
-		return warnings, errors
+		errorsList = append(errorsList, fmt.Sprintf("Workers (%d) must be positive", c.Workers))
+		return warnings, errorsList
 	}
 
 	availableCPU := runtime.NumCPU()
 	allowed := int(float64(availableCPU) * 1.2)
 
 	if c.Workers > allowed {
-		errors = append(errors, fmt.Sprintf("Workers (%d) exceed number of CPUs (%d)", c.Workers, availableCPU))
+		errorsList = append(errorsList, fmt.Sprintf("Workers (%d) exceed number of CPUs (%d)", c.Workers, availableCPU))
 
 	} else if c.Workers > availableCPU {
 		warnings = append(warnings, fmt.Sprintf("Workers (%d) exceed 20%% above available CPUs (%d). Performance may degrade", c.Workers, availableCPU))
 	}
 
-	return warnings, errors
+	return warnings, errorsList
 }
 
-func (c *configFields) validateCombinations() (warnings []string, errors []string) {
+func (c *configFields) validateCombinations() (warnings []string, errorsList []string) {
 	charsetLength := int64(len(c.Charset))
 	if charsetLength <= 0 {
-		errors = append(errors, ("Charset is empty, cannot calculate the number of combinations"))
-		return warnings, errors
+		errorsList = append(errorsList, ("Charset is empty, cannot calculate the number of combinations"))
+		return warnings, errorsList
 	}
 
 	remainingLength := int64(c.MaxLenght - len(c.KnownPart))
 	if remainingLength <= 0 {
-		errors = append(errors, fmt.Sprintf("MaxLength (%d) cannot be smaller or equal then the KnownPart (%d)", c.MaxLenght, len(c.KnownPart)))
-		return warnings, errors
+		errorsList = append(errorsList, fmt.Sprintf("MaxLength (%d) cannot be smaller or equal then the KnownPart (%d)", c.MaxLenght, len(c.KnownPart)))
+		return warnings, errorsList
 	}
 
 	totalCombinations := big.NewInt(0)
@@ -108,11 +136,11 @@ func (c *configFields) validateCombinations() (warnings []string, errors []strin
 	totalCombinations.Exp(charsetSize, expoent, nil)
 
 	if totalCombinations.Cmp(errorTreashold) >= 0 {
-		errors = append(errors, fmt.Sprintf("Total combinations (%s) exceded ERROR_TREASHOLD (%d)", totalCombinations.String(), ERROR_TREASHOLD))
+		errorsList = append(errorsList, fmt.Sprintf("Total combinations (%s) exceded ERROR_TREASHOLD (%d)", totalCombinations.String(), ERROR_TREASHOLD))
 
 	} else if totalCombinations.Cmp(warningTreashold) >= 0 {
 		warnings = append(warnings, fmt.Sprintf("Total combinations (%s) exceded WARNING_TREASHOLD (%d)", totalCombinations.String(), WARNING_TREASHOLD))
 	}
 
-	return warnings, errors
+	return warnings, errorsList
 }
