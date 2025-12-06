@@ -21,14 +21,14 @@ const (
 )
 
 func ExtractMetadata(reader io.ReadSeeker) (*domain.RarMetadata, error) {
-	bufReader := bufio.NewReader(reader)
+	bufioReader := bufio.NewReader(reader)
 
-	if err := validateSignature(bufReader); err != nil {
+	if err := validateSignature(bufioReader); err != nil {
 		return nil, err
 	}
 
 	for {
-		headerType, bodySize, err := readBlockHeader(bufReader)
+		headerType, bodySize, err := readBlockHeader(bufioReader)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +45,7 @@ func ExtractMetadata(reader io.ReadSeeker) (*domain.RarMetadata, error) {
 			return nil, fmt.Errorf("failed to skip header body: %w", err)
 		}
 
-		bufReader.Reset(reader)
+		bufioReader.Reset(reader)
 	}
 }
 

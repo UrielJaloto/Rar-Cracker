@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	WarningThreshold = 250000000
-	ErrorThreshold   = 1000000000000
+	warningThreshold        = 250000000
+	errorThreshold          = 1000000000000
+	workerUtilizationFactor = 1.2
 )
 
 type Validator struct{}
@@ -22,17 +23,17 @@ func NewValidator() *Validator {
 	return &Validator{}
 }
 
-func (v *Validator) Validate(cfg *domain.Config) ([]string, error) {
+func (v *Validator) Validate(settings *domain.Config) ([]string, error) {
 	var errs []error
 	var warnings []string
 
-	if strings.TrimSpace(cfg.CharsetPath) == "" {
+	if strings.TrimSpace(settings.CharsetPath) == "" {
 		errs = append(errs, errors.New("charset path is required"))
 	}
-	if strings.TrimSpace(cfg.FilePath) == "" {
+	if strings.TrimSpace(settings.FilePath) == "" {
 		errs = append(errs, errors.New("file path is required"))
 	}
-	if len(cfg.Charset) == 0 && cfg.CharsetPath != "" {
+	if len(settings.Charset) == 0 && settings.CharsetPath != "" {
 		errs = append(errs, errors.New("charset is empty"))
 	}
 
@@ -40,17 +41,17 @@ func (v *Validator) Validate(cfg *domain.Config) ([]string, error) {
 		return nil, errors.Join(errs...)
 	}
 
-	if err := v.validatePaths(cfg); err != nil {
+	if err := v.validatePaths(settings); err != nil {
 		errs = append(errs, err)
 	}
 
-	w, e := v.validateResources(cfg)
+	w, e := v.validateResources(settings)
 	warnings = append(warnings, w...)
 	if e != nil {
 		errs = append(errs, e)
 	}
 
-	wComb, eComb := v.validateComplexity(cfg)
+	wComb, eComb := v.validateComplexity(settings)
 	warnings = append(warnings, wComb...)
 	if eComb != nil {
 		errs = append(errs, eComb)
@@ -59,10 +60,10 @@ func (v *Validator) Validate(cfg *domain.Config) ([]string, error) {
 	return warnings, errors.Join(errs...)
 }
 
-func (v *Validator) validatePaths(cfg *domain.Config) error {
+func (v *Validator) validatePaths(settings *domain.Config) error {
 	paths := map[string]string{
-		"Charset": cfg.CharsetPath,
-		"File":    cfg.FilePath,
+		"Charset": settings.CharsetPath,
+		"File":    settings.FilePath,
 	}
 
 	var errs []error
@@ -75,41 +76,41 @@ func (v *Validator) validatePaths(cfg *domain.Config) error {
 	return errors.Join(errs...)
 }
 
-func (v *Validator) validateResources(cfg *domain.Config) ([]string, error) {
+func (v *Validator) validateResources(settings *domain.Config) ([]string, error) {
 	var warnings []string
-	if cfg.Workers <= 0 {
-		return nil, fmt.Errorf("workers must be positive (got %d)", cfg.Workers)
+	if settings.Workers <= 0 {
+		return nil, fmt.Errorf("workers must be positive (got %d)", settings.Workers)
 	}
 
 	cpus := runtime.NumCPU()
-	limit := int(float64(cpus) * 1.2)
+	limit := int(float64(cpus) * workerUtilizationFactor)
 
-	if cfg.Workers > limit {
-		return nil, fmt.Errorf("workers (%d) exceed CPU limit significantly (max allowed: %d)", cfg.Workers, limit)
-	} else if cfg.Workers > cpus {
-		warnings = append(warnings, fmt.Sprintf("workers (%d) exceed physical CPU count (%d). Performance may degrade", cfg.Workers, cpus))
+	if settings.Workers > limit {
+		return nil, fmt.Errorf("workers (%d) exceed CPU limit significantly (max allowed: %d)", settings.Workers, limit)
+	} else if settings.Workers > cpus {
+		warnings = append(warnings, fmt.Sprintf("workers (%d) exceed physical CPU count (%d). Performance may degrade", settings.Workers, cpus))
 	}
 	return warnings, nil
 }
 
-func (v *Validator) validateComplexity(cfg *domain.Config) ([]string, error) {
+func (v *Validator) validateComplexity(settings *domain.Config) ([]string, error) {
 	var warnings []string
 
-	remainingLength := cfg.MaxLength - len(cfg.KnownPart)
+	remainingLength := settings.MaxLength - len(settings.KnownPart)
 	if remainingLength <= 0 {
-		return nil, fmt.Errorf("max length (%d) cannot be smaller or equal to known part length (%d)", cfg.MaxLength, len(cfg.KnownPart))
+		return nil, fmt.Errorf("max length (%d) cannot be smaller or equal to known part length (%d)", settings.MaxLength, len(settings.KnownPart))
 	}
 
-	total := cfg.CalculateTotalCombinations()
+	total := settings.CalculateTotalCombinations()
 
-	limitErr := big.NewInt(ErrorThreshold)
-	limitWarn := big.NewInt(WarningThreshold)
+	limitError := big.NewInt(errorThreshold)
+	limitWarning := big.NewInt(warningThreshold)
 
-	if total.Cmp(limitErr) >= 0 {
-		return nil, fmt.Errorf("total combinations (%s) exceeded ERROR_THRESHOLD (%d)", total.String(), ErrorThreshold)
+	if total.Cmp(limitError) >= 0 {
+		return nil, fmt.Errorf("total combinations (%s) exceeded the error threshold (%d)", total.String(), errorThreshold)
 	}
-	if total.Cmp(limitWarn) >= 0 {
-		warnings = append(warnings, fmt.Sprintf("total combinations (%s) exceeded WARNING_THRESHOLD (%d)", total.String(), WarningThreshold))
+	if total.Cmp(limitWarning) >= 0 {
+		warnings = append(warnings, fmt.Sprintf("total combinations (%s) exceeded the warning threshold (%d)", total.String(), warningThreshold))
 	}
 	return warnings, nil
 }

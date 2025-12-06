@@ -12,21 +12,17 @@ import (
 
 func main() {
 	loader := config.NewLoader()
-	cfg, err := loader.Load()
+	settings, err := loader.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
 	validator := config.NewValidator()
-	warnings, err := validator.Validate(cfg)
+	warnings, err := validator.Validate(settings)
 
 	if len(warnings) > 0 {
-		fmt.Println("(WARNINGS):")
-		for _, w := range warnings {
-			fmt.Printf("    %s\n", w)
-		}
-		fmt.Println()
+		printWarnings(warnings)
 	}
 
 	if err != nil {
@@ -34,9 +30,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	printConfiguration(cfg)
+	printConfiguration(settings)
 
-	file, err := os.Open(cfg.FilePath)
+	file, err := os.Open(settings.FilePath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error opening file: %v\n", err)
 		os.Exit(1)
@@ -50,6 +46,14 @@ func main() {
 	}
 
 	fmt.Printf("Metadata extracted successfully! (Encryption found: %v)\n", metadata != nil)
+}
+
+func printWarnings(warnings []string) {
+	fmt.Println("(WARNINGS):")
+	for _, w := range warnings {
+		fmt.Printf("    %s\n", w)
+	}
+	fmt.Println()
 }
 
 func printErrors(err error) {
