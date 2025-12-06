@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/UrielJaloto/Rar-Cracker/domain"
 )
@@ -21,33 +20,17 @@ const (
 	headerTypeEndArchive  = 0x05
 )
 
-func ExtractMetadata(filePath string) (*domain.RarMetadata, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("falha ao abrir arquivo: %w", err)
-	}
-	defer file.Close()
+func ExtractMetadata(reader io.ReadSeeker) (*domain.RarMetadata, error) {
+	bufReader := bufio.NewReader(reader)
 
-	fileReader := bufio.NewReader(file)
-
-	if err := checkRar5Signature(fileReader); err != nil {
+	if err := validateSignature(bufReader); err != nil {
 		return nil, err
 	}
 
 	for {
-		headerCrc := make([]byte, 4)
-		if _, err := io.ReadFull(fileReader, headerCrc); err != nil {
-			return nil, fmt.Errorf("falha ao ler CRC do cabeçalho: %w", err)
-		}
-
-		headerSize, _, err := readVariableLengthInteger(fileReader)
+		headerType, bodySize, err := readBlockHeader(bufReader)
 		if err != nil {
-			return nil, fmt.Errorf("falha ao ler tamanho do cabeçalho: %w", err)
-		}
-
-		headerType, bytesReadForHeaderType, err := readVariableLengthInteger(fileReader)
-		if err != nil {
-			return nil, fmt.Errorf("falha ao ler tipo do cabeçalho: %w", err)
+			return nil, err
 		}
 
 		if headerType == headerTypeEncryption {
@@ -55,39 +38,57 @@ func ExtractMetadata(filePath string) (*domain.RarMetadata, error) {
 		}
 
 		if headerType == headerTypeEndArchive {
-			return nil, errors.New("cabeçalho de criptografia não encontrado antes do fim do arquivo")
+			return nil, errors.New("encryption header not found")
 		}
 
-		bytesToSkip := int64(headerSize) - int64(bytesReadForHeaderType)
-
-		if bytesToSkip < 0 {
-			return nil, errors.New("tamanho do cabeçalho inconsistente")
+		if _, err := reader.Seek(int64(bodySize), io.SeekCurrent); err != nil {
+			return nil, fmt.Errorf("failed to skip header body: %w", err)
 		}
 
-		if _, err := file.Seek(bytesToSkip, io.SeekCurrent); err != nil {
-			return nil, fmt.Errorf("falha ao pular conteúdo do cabeçalho: %w", err)
-		}
-
-		fileReader.Reset(file)
+		bufReader.Reset(reader)
 	}
 }
 
-func checkRar5Signature(reader io.Reader) error {
+func readBlockHeader(reader *bufio.Reader) (headerType uint64, bodySize uint64, err error) {
+	headerCrc := make([]byte, 4)
+	if _, err := io.ReadFull(reader, headerCrc); err != nil {
+		return 0, 0, fmt.Errorf("failed to read CRC: %w", err)
+	}
+
+	rawHeaderSize, _, err := readVarInt(reader)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to read header size: %w", err)
+	}
+
+	headerType, headerTypeSize, err := readVarInt(reader)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to read header type: %w", err)
+	}
+
+	bytesToSkip := int64(rawHeaderSize) - int64(headerTypeSize)
+	if bytesToSkip < 0 {
+		return 0, 0, errors.New("inconsistent header size")
+	}
+
+	return headerType, uint64(bytesToSkip), nil
+}
+
+func validateSignature(reader io.Reader) error {
 	signatureLen := len(rar5Signature)
 	fileSignature := make([]byte, signatureLen)
 
 	if _, err := io.ReadFull(reader, fileSignature); err != nil {
-		return fmt.Errorf("não foi possível ler a assinatura: %w", err)
+		return fmt.Errorf("failed to read signature: %w", err)
 	}
 
 	if !bytes.Equal(fileSignature, rar5Signature) {
-		return errors.New("assinatura inválida: o arquivo não é um RAR5")
+		return errors.New("invalid signature: not a RAR5 file")
 	}
 
 	return nil
 }
 
-func readVariableLengthInteger(reader *bufio.Reader) (uint64, int, error) {
+func readVarInt(reader io.ByteReader) (uint64, int, error) {
 	var value uint64
 	var shift uint
 	var bytesRead int
@@ -107,7 +108,7 @@ func readVariableLengthInteger(reader *bufio.Reader) (uint64, int, error) {
 
 		shift += 7
 		if shift > 64 {
-			return 0, bytesRead, errors.New("inteiro de tamanho variável excedeu limite de 64 bits")
+			return 0, bytesRead, errors.New("variable integer exceeded 64 bits")
 		}
 	}
 }
