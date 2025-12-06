@@ -3,31 +3,32 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/UrielJaloto/Rar-Cracker/internal/config"
 )
 
 func main() {
-	appConfig := config.New()
-
-	configWarnings, configErrors := appConfig.Setup()
-	if len(configWarnings) > 0 {
-		fmt.Println("(WARNINGS):")
-		for _, warning := range configWarnings {
-			fmt.Printf("    %s\n\n", warning)
-		}
-	}
-
-	if configErrors != nil {
-		fmt.Fprintln(os.Stderr, "(ERRORS):")
-		for line := range strings.SplitSeq(configErrors.Error(), "\n") {
-			if line != "" {
-				fmt.Fprintf(os.Stderr, "    %s\n\n", line)
-			}
-		}
+	loader := config.NewLoader()
+	cfg, err := loader.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
-	appConfig.PrintFields()
+	validator := config.NewValidator()
+	warnings, err := validator.Validate(cfg)
+
+	if len(warnings) > 0 {
+		fmt.Println("WARNINGS:")
+		for _, w := range warnings {
+			fmt.Printf("- %s\n", w)
+		}
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ERRORS:\n%v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Starting cracker for file: %s with %d workers\n", cfg.FilePath, cfg.Workers)
 }
