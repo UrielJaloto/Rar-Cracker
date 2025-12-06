@@ -32,7 +32,6 @@ func (v *Validator) Validate(cfg *domain.Config) ([]string, error) {
 	if strings.TrimSpace(cfg.FilePath) == "" {
 		errs = append(errs, errors.New("file path is required"))
 	}
-
 	if len(cfg.Charset) == 0 && cfg.CharsetPath != "" {
 		errs = append(errs, errors.New("charset is empty"))
 	}
@@ -73,25 +72,22 @@ func (v *Validator) validatePaths(cfg *domain.Config) error {
 		}
 	}
 
-	if cfg.StateFilePath != "" {
-		if _, err := os.Stat(cfg.StateFilePath); err == nil {
-		}
-	}
-
 	return errors.Join(errs...)
 }
 
 func (v *Validator) validateResources(cfg *domain.Config) ([]string, error) {
 	var warnings []string
 	if cfg.Workers <= 0 {
-		return nil, fmt.Errorf("workers must be positive")
+		return nil, fmt.Errorf("workers must be positive (got %d)", cfg.Workers)
 	}
 
 	cpus := runtime.NumCPU()
-	if cfg.Workers > int(float64(cpus)*1.2) {
-		return nil, fmt.Errorf("workers exceed CPU limit significantly")
+	limit := int(float64(cpus) * 1.2)
+
+	if cfg.Workers > limit {
+		return nil, fmt.Errorf("workers (%d) exceed CPU limit significantly (max allowed: %d)", cfg.Workers, limit)
 	} else if cfg.Workers > cpus {
-		warnings = append(warnings, "workers exceed physical CPU count")
+		warnings = append(warnings, fmt.Sprintf("workers (%d) exceed physical CPU count (%d). Performance may degrade", cfg.Workers, cpus))
 	}
 	return warnings, nil
 }
@@ -101,7 +97,7 @@ func (v *Validator) validateComplexity(cfg *domain.Config) ([]string, error) {
 
 	remainingLength := cfg.MaxLength - len(cfg.KnownPart)
 	if remainingLength <= 0 {
-		return nil, fmt.Errorf("max length cannot be smaller or equal to known part")
+		return nil, fmt.Errorf("max length (%d) cannot be smaller or equal to known part length (%d)", cfg.MaxLength, len(cfg.KnownPart))
 	}
 
 	total := cfg.CalculateTotalCombinations()
@@ -110,10 +106,10 @@ func (v *Validator) validateComplexity(cfg *domain.Config) ([]string, error) {
 	limitWarn := big.NewInt(WarningThreshold)
 
 	if total.Cmp(limitErr) >= 0 {
-		return nil, fmt.Errorf("combinations %s exceeded error threshold", total.String())
+		return nil, fmt.Errorf("total combinations (%s) exceeded ERROR_THRESHOLD (%d)", total.String(), ErrorThreshold)
 	}
 	if total.Cmp(limitWarn) >= 0 {
-		warnings = append(warnings, fmt.Sprintf("combinations %s exceeded warning threshold", total.String()))
+		warnings = append(warnings, fmt.Sprintf("total combinations (%s) exceeded WARNING_THRESHOLD (%d)", total.String(), WarningThreshold))
 	}
 	return warnings, nil
 }
