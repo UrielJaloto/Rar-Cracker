@@ -1,7 +1,6 @@
 package rar
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -20,15 +19,54 @@ const (
 	headerTypeEndArchive  = 0x05
 )
 
-func ExtractMetadata(reader io.ReadSeeker) (*domain.RarMetadata, error) {
-	bufioReader := bufio.NewReader(reader)
+func validateSignature(reader io.Reader) error {
+	signatureLen := len(rar5Signature)
+	fileSignature := make([]byte, signatureLen)
 
-	if err := validateSignature(bufioReader); err != nil {
+	if _, err := io.ReadFull(reader, fileSignature); err != nil {
+		return fmt.Errorf("failed to read signature: %w", err)
+	}
+
+	if !bytes.Equal(fileSignature, rar5Signature) {
+		return errors.New("invalid signature: not a RAR5 file")
+	}
+
+	return nil
+}
+
+func readVarInt(reader io.Reader) (uint64, int, error) {
+	var decodedValue uint64
+	var shift uint
+	var bytesRead int
+	Buffer := make([]byte, 1)
+
+	for {
+		if _, err := reader.Read(Buffer); err != nil {
+			return 0, bytesRead, err
+		}
+		byteValue := Buffer[0]
+		bytesRead++
+
+		decodedValue |= uint64(byteValue&0x7F) << shift
+
+		if byteValue&0x80 == 0 {
+			return decodedValue, bytesRead, nil
+		}
+
+		shift += 7
+		if shift > 64 {
+			return 0, bytesRead, errors.New("variable integer exceeded 64 bits")
+		}
+	}
+}
+
+func ExtractMetadata(reader io.ReadSeeker) (*domain.RarMetadata, error) {
+	if err := validateSignature(reader); err != nil {
 		return nil, err
 	}
 
 	for {
-		headerType, bodySize, err := readBlockHeader(bufioReader)
+		headerType, bodySize, err := readBlockHeader(reader)
 		if err != nil {
 			return nil, err
 		}
@@ -44,12 +82,10 @@ func ExtractMetadata(reader io.ReadSeeker) (*domain.RarMetadata, error) {
 		if _, err := reader.Seek(int64(bodySize), io.SeekCurrent); err != nil {
 			return nil, fmt.Errorf("failed to skip header body: %w", err)
 		}
-
-		bufioReader.Reset(reader)
 	}
 }
 
-func readBlockHeader(reader *bufio.Reader) (headerType uint64, bodySize uint64, err error) {
+func readBlockHeader(reader io.Reader) (headerType uint64, bodySize uint64, err error) {
 	headerCrc := make([]byte, 4)
 	if _, err := io.ReadFull(reader, headerCrc); err != nil {
 		return 0, 0, fmt.Errorf("failed to read CRC: %w", err)
@@ -71,44 +107,4 @@ func readBlockHeader(reader *bufio.Reader) (headerType uint64, bodySize uint64, 
 	}
 
 	return headerType, uint64(bytesToSkip), nil
-}
-
-func validateSignature(reader io.Reader) error {
-	signatureLen := len(rar5Signature)
-	fileSignature := make([]byte, signatureLen)
-
-	if _, err := io.ReadFull(reader, fileSignature); err != nil {
-		return fmt.Errorf("failed to read signature: %w", err)
-	}
-
-	if !bytes.Equal(fileSignature, rar5Signature) {
-		return errors.New("invalid signature: not a RAR5 file")
-	}
-
-	return nil
-}
-
-func readVarInt(reader io.ByteReader) (uint64, int, error) {
-	var value uint64
-	var shift uint
-	var bytesRead int
-
-	for {
-		byteValue, err := reader.ReadByte()
-		if err != nil {
-			return 0, bytesRead, err
-		}
-		bytesRead++
-
-		value |= uint64(byteValue&0x7F) << shift
-
-		if byteValue&0x80 == 0 {
-			return value, bytesRead, nil
-		}
-
-		shift += 7
-		if shift > 64 {
-			return 0, bytesRead, errors.New("variable integer exceeded 64 bits")
-		}
-	}
 }
