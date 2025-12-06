@@ -18,10 +18,10 @@ func main() {
 			fmt.Printf("    %s\n\n", warning)
 		}
 	}
+
 	if configErrors != nil {
 		fmt.Fprintln(os.Stderr, "(ERRORS):")
-		errorLines := strings.Split(configErrors.Error(), "\n")
-		for _, line := range errorLines {
+		for line := range strings.SplitSeq(configErrors.Error(), "\n") {
 			if line != "" {
 				fmt.Fprintf(os.Stderr, "    %s\n\n", line)
 			}
