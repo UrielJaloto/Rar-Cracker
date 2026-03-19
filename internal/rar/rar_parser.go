@@ -47,6 +47,9 @@ func readVarInt(reader io.Reader) (uint64, int, error) {
 		byteValue := Buffer[0]
 		bytesRead++
 
+		// & 0x7F (01111111): Strips the 8th bit (continuation flag), keeping only the 7 data bits.
+		// << shift: Moves these 7 bits to their correct position in the final number.
+		// |= (OR): Safely merges the shifted bits into decodedValue without overwriting existing 1s.
 		decodedValue |= uint64(byteValue&0x7F) << shift
 
 		if byteValue&0x80 == 0 {
@@ -87,6 +90,7 @@ func ExtractMetadata(reader io.ReadSeeker) (*domain.RarMetadata, error) {
 
 func readBlockHeader(reader io.Reader) (headerType uint64, bodySize uint64, err error) {
 	headerCrc := make([]byte, 4)
+
 	if _, err := io.ReadFull(reader, headerCrc); err != nil {
 		return 0, 0, fmt.Errorf("failed to read CRC: %w", err)
 	}
