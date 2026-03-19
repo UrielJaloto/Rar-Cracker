@@ -4,7 +4,7 @@ import (
 	"flag"
 
 	"github.com/UrielJaloto/Rar-Cracker/domain"
-	"github.com/UrielJaloto/Rar-Cracker/internal/utils" // Importa o utils
+	"github.com/UrielJaloto/Rar-Cracker/internal/utils"
 )
 
 type FlagLoader struct{}
@@ -13,7 +13,7 @@ func NewLoader() *FlagLoader {
 	return &FlagLoader{}
 }
 
-func (l *FlagLoader) Load() (*domain.Config, error) {
+func (f *FlagLoader) Load() (*domain.Config, error) {
 	var charsetPath, filePath, knownPart, stateFile string
 	var maxLength, workers int
 

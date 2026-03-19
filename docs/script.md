@@ -1,10 +1,8 @@
-
 # Roteiro do Projeto: Rar-Cracker
 
 Este documento descreve a especificação do projeto **rar-cracker**, 
 uma ferramenta de linha de comando para recuperação de senhas de arquivos RAR5.  
 
----
 
 ## 1. Visão Geral do Projeto
 
@@ -19,7 +17,6 @@ tente descobrir a senha completa.
 - **Resiliência:** possibilidade de pausar e retomar o progresso.  
 - **Simplicidade:** dependência mínima, apenas biblioteca padrão do Go.  
 
----
 
 ## 2. Arquitetura e Componentes
 
@@ -27,7 +24,6 @@ tente descobrir a senha completa.
 - **internal/** → implementações concretas (parsing, workers, geração de senhas, persistência e UI).  
 - **domain/** → contratos, modelos e entidades que representam as regras de negócio centrais.  
 
----
 
 ## 3. Etapas de Desenvolvimento
 
@@ -56,7 +52,6 @@ Responsabilidade do `main.go`.
 - Inicializa workers, gerador e UI.  
 - Gerencia ciclo de vida e encerramento limpo das goroutines.  
 
----
 
 ## 4. Funcionalidades Avançadas
 
@@ -72,7 +67,6 @@ Responsabilidade do `main.go`.
 - As informações do RAR são lidas apenas uma vez na inicialização.  
 - Compartilhadas em memória com todos os workers para evitar reprocessamento.  
 
----
 
 ## 5. Estrutura de Arquivos
 

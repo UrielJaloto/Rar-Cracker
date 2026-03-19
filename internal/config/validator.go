@@ -13,7 +13,7 @@ import (
 
 const (
 	warningThreshold        = 250000000
-	errorThreshold          = 1000000000000
+	errorThreshold          = 1000000000
 	workerUtilizationFactor = 1.2
 )
 
