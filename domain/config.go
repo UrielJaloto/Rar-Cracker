@@ -1,6 +1,9 @@
 package domain
 
-import "math/big"
+import (
+	"math/big"
+	"unicode/utf8"
+)
 
 type Config struct {
 	CharsetPath   string
@@ -14,7 +17,8 @@ type Config struct {
 
 func (c *Config) CalculateTotalCombinations() *big.Int {
 	charsetSize := big.NewInt(int64(len(c.Charset)))
-	remainingLength := int64(c.MaxLength - len(c.KnownPart))
+	knownLen := utf8.RuneCountInString(c.KnownPart)
+	remainingLength := int64(c.MaxLength - knownLen)
 
 	if charsetSize.Sign() <= 0 || remainingLength <= 0 {
 		return big.NewInt(0)

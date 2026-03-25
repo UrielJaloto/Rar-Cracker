@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/UrielJaloto/Rar-Cracker/domain"
 )
@@ -41,7 +42,7 @@ func (v *Validator) Validate(settings *domain.Config) ([]string, error) {
 		return nil, errors.Join(errs...)
 	}
 
-	if err := v.validatePaths(settings); err != nil {
+	if err := v.validateFilePath(settings); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -60,20 +61,11 @@ func (v *Validator) Validate(settings *domain.Config) ([]string, error) {
 	return warnings, errors.Join(errs...)
 }
 
-func (v *Validator) validatePaths(settings *domain.Config) error {
-	paths := map[string]string{
-		"Charset": settings.CharsetPath,
-		"File":    settings.FilePath,
+func (v *Validator) validateFilePath(settings *domain.Config) error {
+	if _, err := os.Stat(settings.FilePath); os.IsNotExist(err) {
+		return fmt.Errorf("File not found: %s", settings.FilePath)
 	}
-
-	var errs []error
-	for name, path := range paths {
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			errs = append(errs, fmt.Errorf("%s not found: %s", name, path))
-		}
-	}
-
-	return errors.Join(errs...)
+	return nil
 }
 
 func (v *Validator) validateResources(settings *domain.Config) ([]string, error) {
@@ -96,7 +88,8 @@ func (v *Validator) validateResources(settings *domain.Config) ([]string, error)
 func (v *Validator) validateComplexity(settings *domain.Config) ([]string, error) {
 	var warnings []string
 
-	remainingLength := settings.MaxLength - len(settings.KnownPart)
+	knownLen := utf8.RuneCountInString(settings.KnownPart)
+	remainingLength := settings.MaxLength - knownLen
 	if remainingLength <= 0 {
 		return nil, fmt.Errorf("max length (%d) cannot be smaller or equal to known part length (%d)", settings.MaxLength, len(settings.KnownPart))
 	}

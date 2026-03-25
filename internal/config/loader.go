@@ -2,8 +2,10 @@ package config
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/UrielJaloto/Rar-Cracker/domain"
+	"github.com/UrielJaloto/Rar-Cracker/internal/utils"
 )
 
 type FlagLoader struct{}
@@ -25,6 +27,16 @@ func (f *FlagLoader) Load() (*domain.Config, error) {
 
 	flag.Parse()
 
+	var charset []rune
+	var err error
+
+	if charsetPath != "" {
+		charset, err = utils.ReadUniqueChars(charsetPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read charset file: %w", err)
+		}
+	}
+
 	return &domain.Config{
 		CharsetPath:   charsetPath,
 		FilePath:      filePath,
@@ -32,5 +44,6 @@ func (f *FlagLoader) Load() (*domain.Config, error) {
 		KnownPart:     knownPart,
 		MaxLength:     maxLength,
 		Workers:       workers,
+		Charset:       charset, // Agora ele vai preenchido para o Validator!
 	}, nil
 }
