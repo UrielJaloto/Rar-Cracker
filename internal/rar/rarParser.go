@@ -86,35 +86,35 @@ func readVarInt(reader io.Reader) (decodedValue uint64, bytesRead int64, err err
 	}
 }
 
-func readBlockHeader(reader io.Reader) (BlockHeader *domain.BlockHeader, err error) {
-	BlockHeader = &domain.BlockHeader{}
+func readBlockHeader(reader io.Reader) (blockHeader *domain.BlockHeader, err error) {
+	blockHeader = &domain.BlockHeader{}
 
 	headerCrc := make([]byte, 4)
 	if _, err := io.ReadFull(reader, headerCrc); err != nil {
-		return BlockHeader, fmt.Errorf("failed to read CRC: %w", err)
+		return blockHeader, fmt.Errorf("failed to read CRC: %w", err)
 	}
 
 	rawHeaderSize, _, err := readVarInt(reader)
 	if err != nil {
-		return BlockHeader, fmt.Errorf("failed to read header size: %w", err)
+		return blockHeader, fmt.Errorf("failed to read header size: %w", err)
 	}
 
 	headerType, headerBytesRead, err := readVarInt(reader)
 	if err != nil {
-		return BlockHeader, fmt.Errorf("failed to read header type: %w", err)
+		return blockHeader, fmt.Errorf("failed to read header type: %w", err)
 	}
-	BlockHeader.HeaderType = headerType
+	blockHeader.HeaderType = headerType
 
 	headerFlags, flagsBytes, err := readVarInt(reader)
 	if err != nil {
-		return BlockHeader, fmt.Errorf("inconsistent header flags: %w", err)
+		return blockHeader, fmt.Errorf("inconsistent header flags: %w", err)
 	}
 
 	headerBytesRead += flagsBytes
 	if (headerFlags & 0x0001) != 0 {
 		_, extraBytes, err := readVarInt(reader)
 		if err != nil {
-			return BlockHeader, fmt.Errorf("inconsistent extra area size: %w", err)
+			return blockHeader, fmt.Errorf("inconsistent extra area size: %w", err)
 		}
 		headerBytesRead += extraBytes
 	}
@@ -124,18 +124,18 @@ func readBlockHeader(reader io.Reader) (BlockHeader *domain.BlockHeader, err err
 		var dataBytes int64
 		dataAreaSize, dataBytes, err = readVarInt(reader)
 		if err != nil {
-			return BlockHeader, fmt.Errorf("inconsistent data area size: %w", err)
+			return blockHeader, fmt.Errorf("inconsistent data area size: %w", err)
 		}
 		headerBytesRead += dataBytes
 	}
 
 	remainingHeaderBytes := int64(rawHeaderSize) - headerBytesRead
 	if remainingHeaderBytes < 0 {
-		return BlockHeader, fmt.Errorf("inconsistent header size computation: %w", err)
+		return blockHeader, errors.New("inconsistent header size computation")
 	}
 
-	BlockHeader.BytesToNextBlock = remainingHeaderBytes + int64(dataAreaSize)
-	return BlockHeader, nil
+	blockHeader.BytesToNextBlock = remainingHeaderBytes + int64(dataAreaSize)
+	return blockHeader, nil
 }
 
 func parseEncryptionHeader(reader io.Reader) (*domain.EncryptionMetadata, error) {
@@ -147,7 +147,7 @@ func parseEncryptionHeader(reader io.Reader) (*domain.EncryptionMetadata, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read encryption flags: %w", err)
 	}
-	usePasswordCheck := (encryptionFlags & 0x01) != 0
+	usePasswordCheck := (encryptionFlags & 0x0001) != 0
 
 	kdfCount := make([]byte, 1)
 	_, err = io.ReadFull(reader, kdfCount)
