@@ -45,8 +45,8 @@ func (v *Validator) Validate(settings *domain.Config) ([]string, error) {
 		errs = append(errs, err)
 	}
 
-	warning, err := v.validateResources(settings)
-	warnings = append(warnings, warning...)
+	resourcesWarnings, err := v.validateResources(settings)
+	warnings = append(warnings, resourcesWarnings...)
 	if err != nil {
 		errs = append(errs, err)
 	}
