@@ -96,7 +96,7 @@ Responsabilidade do `main.go`.
 * │       └── worker.go
 * │
 * ├── domain/ ................................................ # Regras de negócio (entidades e contratos)
-* │   ├── rar_metadata.go ............................. # Estruturas de dados e entidades
+* │   ├── encryption_metadata.go ............................. # Estruturas de dados e entidades
 * │   ├── worker_service.go .......................... # Contrato do serviço de workers
 * │   ├── generator_service.go .................... # Contrato do gerador de senhas
 * │   └── state_model.go
