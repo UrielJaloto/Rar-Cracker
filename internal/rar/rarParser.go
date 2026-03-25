@@ -25,20 +25,20 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 	}
 
 	for {
-		headerType, bodySize, err := readBlockHeader(reader)
+		blockHeader, err := readBlockHeader(reader)
 		if err != nil {
 			return nil, err
 		}
 
-		if headerType == headerTypeEndArchive {
+		if blockHeader.HeaderType == headerTypeEndArchive {
 			return nil, errors.New("encryption header not found")
 		}
 
-		if headerType == headerTypeEncryption {
+		if blockHeader.HeaderType == headerTypeEncryption {
 			return parseEncryptionHeader(reader)
 		}
 
-		if _, err := reader.Seek(int64(bodySize), io.SeekCurrent); err != nil {
+		if _, err := reader.Seek(blockHeader.BytesToNextBlock, io.SeekCurrent); err != nil {
 			return nil, fmt.Errorf("failed to skip header body: %w", err)
 		}
 	}
@@ -59,15 +59,15 @@ func validateSignature(reader io.Reader) error {
 	return nil
 }
 
-func readVarInt(reader io.Reader) (decodedValue uint64, bytesRead int, err error) {
+func readVarInt(reader io.Reader) (decodedValue uint64, bytesRead int64, err error) {
 	var shift uint
-	Buffer := make([]byte, 1)
+	buffer := make([]byte, 1)
 
 	for {
-		if _, err := reader.Read(Buffer); err != nil {
+		if _, err := io.ReadFull(reader, buffer); err != nil {
 			return 0, bytesRead, err
 		}
-		byteValue := Buffer[0]
+		byteValue := buffer[0]
 		bytesRead++
 
 		// & 0x7F (01111111): Strips the 8th bit (continuation flag), keeping only the 7 data bits.
@@ -86,62 +86,59 @@ func readVarInt(reader io.Reader) (decodedValue uint64, bytesRead int, err error
 	}
 }
 
-func readBlockHeader(reader io.Reader) (headerType uint64, bytesToNextBlock uint64, err error) {
+func readBlockHeader(reader io.Reader) (BlockHeader *domain.BlockHeader, err error) {
+	BlockHeader = &domain.BlockHeader{}
+
 	headerCrc := make([]byte, 4)
 	if _, err := io.ReadFull(reader, headerCrc); err != nil {
-		return 0, 0, fmt.Errorf("failed to read CRC: %w", err)
+		return BlockHeader, fmt.Errorf("failed to read CRC: %w", err)
 	}
 
 	rawHeaderSize, _, err := readVarInt(reader)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to read header size: %w", err)
+		return BlockHeader, fmt.Errorf("failed to read header size: %w", err)
 	}
 
-	headerType, typeBytes, err := readVarInt(reader)
+	headerType, headerBytesRead, err := readVarInt(reader)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to read header type: %w", err)
+		return BlockHeader, fmt.Errorf("failed to read header type: %w", err)
 	}
+	BlockHeader.HeaderType = headerType
 
 	headerFlags, flagsBytes, err := readVarInt(reader)
 	if err != nil {
-		return 0, 0, errors.New("inconsistent header Flags")
+		return BlockHeader, fmt.Errorf("inconsistent header flags: %w", err)
 	}
 
-	headerBytesRead := int64(typeBytes + flagsBytes)
-	var dataAreaSize uint64
-
+	headerBytesRead += flagsBytes
 	if (headerFlags & 0x0001) != 0 {
 		_, extraBytes, err := readVarInt(reader)
 		if err != nil {
-			return 0, 0, errors.New("inconsistent Extra Area Size")
+			return BlockHeader, fmt.Errorf("inconsistent extra area size: %w", err)
 		}
-		headerBytesRead += int64(extraBytes)
+		headerBytesRead += extraBytes
 	}
 
+	var dataAreaSize uint64
 	if (headerFlags & 0x0002) != 0 {
-		var dataBytes int
+		var dataBytes int64
 		dataAreaSize, dataBytes, err = readVarInt(reader)
 		if err != nil {
-			return 0, 0, errors.New("inconsistent Data Area Size")
+			return BlockHeader, fmt.Errorf("inconsistent data area size: %w", err)
 		}
-		headerBytesRead += int64(dataBytes)
+		headerBytesRead += dataBytes
 	}
 
 	remainingHeaderBytes := int64(rawHeaderSize) - headerBytesRead
 	if remainingHeaderBytes < 0 {
-		return 0, 0, errors.New("inconsistent header size computation")
+		return BlockHeader, fmt.Errorf("inconsistent header size computation: %w", err)
 	}
 
-	bytesToNextBlock = uint64(remainingHeaderBytes) + dataAreaSize
-
-	return headerType, bytesToNextBlock, nil
+	BlockHeader.BytesToNextBlock = remainingHeaderBytes + int64(dataAreaSize)
+	return BlockHeader, nil
 }
 
 func parseEncryptionHeader(reader io.Reader) (*domain.EncryptionMetadata, error) {
-	KDFCount := make([]byte, 1)
-	salt := make([]byte, 16)
-	passwordCheck := make([]byte, 8)
-
 	if _, _, err := readVarInt(reader); err != nil {
 		return nil, fmt.Errorf("failed to read encryption version header: %w", err)
 	}
@@ -152,19 +149,23 @@ func parseEncryptionHeader(reader io.Reader) (*domain.EncryptionMetadata, error)
 	}
 	usePasswordCheck := (encryptionFlags & 0x01) != 0
 
-	_, err = io.ReadFull(reader, KDFCount)
+	kdfCount := make([]byte, 1)
+	_, err = io.ReadFull(reader, kdfCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read KDF count: %w", err)
 	}
-	iterations := int(KDFCount[0])
+	iterations := int(kdfCount[0])
 
-	_, err = reader.Read(salt)
+	salt := make([]byte, 16)
+	_, err = io.ReadFull(reader, salt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read salt: %w", err)
 	}
 
+	var passwordCheck []byte
 	if usePasswordCheck {
-		_, err = reader.Read(passwordCheck)
+		passwordCheck = make([]byte, 8)
+		_, err = io.ReadFull(reader, passwordCheck)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read password check: %w", err)
 		}

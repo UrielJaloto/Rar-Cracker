@@ -11,8 +11,8 @@ import (
 )
 
 func main() {
-	loader := config.NewLoader()
-	settings, err := loader.Load()
+	configLoader := config.NewLoader()
+	settings, err := configLoader.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
