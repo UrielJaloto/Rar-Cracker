@@ -45,16 +45,16 @@ func (v *Validator) Validate(settings *domain.Config) ([]string, error) {
 		errs = append(errs, err)
 	}
 
-	w, e := v.validateResources(settings)
-	warnings = append(warnings, w...)
-	if e != nil {
-		errs = append(errs, e)
+	warning, err := v.validateResources(settings)
+	warnings = append(warnings, warning...)
+	if err != nil {
+		errs = append(errs, err)
 	}
 
-	wComb, eComb := v.validateComplexity(settings)
-	warnings = append(warnings, wComb...)
-	if eComb != nil {
-		errs = append(errs, eComb)
+	complexityWarning, complexityError := v.validateComplexity(settings)
+	warnings = append(warnings, complexityWarning...)
+	if complexityError != nil {
+		errs = append(errs, complexityError)
 	}
 
 	return warnings, errors.Join(errs...)
