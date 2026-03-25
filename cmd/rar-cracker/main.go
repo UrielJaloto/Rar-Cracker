@@ -8,6 +8,7 @@ import (
 	"github.com/UrielJaloto/Rar-Cracker/domain"
 	"github.com/UrielJaloto/Rar-Cracker/internal/config"
 	"github.com/UrielJaloto/Rar-Cracker/internal/rar"
+	"github.com/UrielJaloto/Rar-Cracker/internal/utils"
 )
 
 func main() {
@@ -16,6 +17,14 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
+	}
+
+	if settings.CharsetPath != "" {
+		charset, err := utils.ReadUniqueChars(settings.CharsetPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to read charset: %v", err)
+		}
+		settings.Charset = charset
 	}
 
 	validator := config.NewValidator()
