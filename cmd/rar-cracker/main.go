@@ -39,13 +39,13 @@ func main() {
 	}
 	defer file.Close()
 
-	metadata, err := rar.ExtractMetadata(file)
+	encryptionMetadata, err := rar.ExtractEncryptionMetadata(file)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing RAR metadata: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error parsing encryption metadata: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Metadata extracted successfully! (Encryption found: %v)\n", metadata != nil)
+	fmt.Printf("Encryption metadata extracted successfully! (Encryption found: %v)\n", encryptionMetadata != nil)
 }
 
 func printWarnings(warnings []string) {
