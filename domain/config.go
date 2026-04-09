@@ -25,7 +25,14 @@ func (c *Config) CalculateTotalCombinations() *big.Int {
 	}
 
 	total := big.NewInt(0)
-	exponent := big.NewInt(remainingLength)
-	total.Exp(charsetSize, exponent, nil)
+
+	for i := int64(1); i <= remainingLength; i++ {
+		combinationsForLength := big.NewInt(0)
+		exponent := big.NewInt(i)
+
+		combinationsForLength.Exp(charsetSize, exponent, nil)
+		total.Add(total, combinationsForLength)
+	}
+
 	return total
 }
