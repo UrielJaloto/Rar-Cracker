@@ -111,13 +111,17 @@ func readBlockHeader(reader io.Reader) (blockHeader *domain.BlockHeader, err err
 	}
 
 	headerBytesRead += flagsBytes
+	var extraSize uint64
+
 	if (headerFlags & 0x0001) != 0 {
-		_, extraBytes, err := readVarInt(reader)
+		var extraBytes int64
+		extraSize, extraBytes, err = readVarInt(reader)
 		if err != nil {
 			return blockHeader, fmt.Errorf("inconsistent extra area size: %w", err)
 		}
 		headerBytesRead += extraBytes
 	}
+	blockHeader.ExtraAreaSize = int64(extraSize)
 
 	var dataAreaSize uint64
 	if (headerFlags & 0x0002) != 0 {
@@ -133,8 +137,9 @@ func readBlockHeader(reader io.Reader) (blockHeader *domain.BlockHeader, err err
 	if remainingHeaderBytes < 0 {
 		return blockHeader, errors.New("inconsistent header size computation")
 	}
-
+	blockHeader.RemainingHeaderBytes = remainingHeaderBytes
 	blockHeader.BytesToNextBlock = remainingHeaderBytes + int64(dataAreaSize)
+
 	return blockHeader, nil
 }
 
