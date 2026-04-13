@@ -44,8 +44,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error parsing encryption metadata: %v\n", err)
 		os.Exit(1)
 	}
+	println()
 
-	fmt.Printf("Encryption metadata extracted successfully! (Encryption found: %v)\n", encryptionMetadata != nil)
+	printEncryptionMetadata(encryptionMetadata)
 }
 
 func printWarnings(warnings []string) {
@@ -73,4 +74,12 @@ func printConfiguration(c *domain.Config) {
 	fmt.Printf("    State File     : %s\n", c.StateFilePath)
 	fmt.Printf("    Max Length     : %d\n", c.MaxLength)
 	fmt.Printf("    Workers        : %d\n", c.Workers)
+}
+
+func printEncryptionMetadata(e *domain.EncryptionMetadata) {
+	fmt.Printf("Encryption Metadata:\n")
+	fmt.Printf("    Password Check     : %x\n", e.PasswordCheck)
+	fmt.Printf("    Salt               : %x\n", e.Salt)
+	fmt.Printf("    Iterations         : %d\n", e.Iterations)
+	fmt.Printf("    UsePassword Check  : %t\n", e.UsePasswordCheck)
 }

@@ -61,13 +61,13 @@ func validateSignature(reader io.Reader) error {
 
 func readVarInt(reader io.Reader) (decodedValue uint64, bytesRead int64, err error) {
 	var shift uint
-	buffer := make([]byte, 1)
+	byteBuffer := make([]byte, 1)
 
 	for {
-		if _, err := io.ReadFull(reader, buffer); err != nil {
+		if _, err := io.ReadFull(reader, byteBuffer); err != nil {
 			return 0, bytesRead, err
 		}
-		byteValue := buffer[0]
+		byteValue := byteBuffer[0]
 		bytesRead++
 
 		// & 0x7F (01111111): Strips the 8th bit (continuation flag), keeping only the 7 data bits.
@@ -109,10 +109,9 @@ func readBlockHeader(reader io.Reader) (blockHeader *domain.BlockHeader, err err
 	if err != nil {
 		return blockHeader, fmt.Errorf("inconsistent header flags: %w", err)
 	}
-
 	headerBytesRead += flagsBytes
-	var extraSize uint64
 
+	var extraSize uint64
 	if (headerFlags & 0x0001) != 0 {
 		var extraBytes int64
 		extraSize, extraBytes, err = readVarInt(reader)
