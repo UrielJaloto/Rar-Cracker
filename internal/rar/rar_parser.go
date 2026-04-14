@@ -12,11 +12,9 @@ import (
 var rar5Signature = []byte{0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00}
 
 const (
-	headerTypeMainArchive = 0x01
-	headerTypeFile        = 0x02
-	headerTypeService     = 0x03
-	headerTypeEncryption  = 0x04
-	headerTypeEndArchive  = 0x05
+	headerTypeFile       = 0x02
+	headerTypeEncryption = 0x04
+	headerTypeEndArchive = 0x05
 )
 
 func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata, error) {
@@ -28,6 +26,11 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 		blockHeader, err := readBlockHeader(reader)
 		if err != nil {
 			return nil, err
+		}
+
+		if (blockHeader.HeaderType == headerTypeFile) && (blockHeader.ExtraAreaSize > 0) {
+			reader.Seek(blockHeader - blockHeader.RemainingHeaderBytes - blockHeader.ExtraAreaSize) // BytesToNextBlock, io.SeekCurrent); err != nil {
+			return parseEncryptionHeader(reader)
 		}
 
 		if blockHeader.HeaderType == headerTypeEndArchive {
@@ -94,50 +97,50 @@ func readBlockHeader(reader io.Reader) (blockHeader *domain.BlockHeader, err err
 		return blockHeader, fmt.Errorf("failed to read CRC: %w", err)
 	}
 
-	rawHeaderSize, _, err := readVarInt(reader)
+	headerSize, _, err := readVarInt(reader)
 	if err != nil {
 		return blockHeader, fmt.Errorf("failed to read header size: %w", err)
 	}
 
-	headerType, headerBytesRead, err := readVarInt(reader)
+	headerType, headerTypeLength, err := readVarInt(reader)
 	if err != nil {
 		return blockHeader, fmt.Errorf("failed to read header type: %w", err)
 	}
 	blockHeader.HeaderType = headerType
+	headerBytesRead := headerTypeLength
 
-	headerFlags, flagsBytes, err := readVarInt(reader)
+	headerFlags, flagsBytesSize, err := readVarInt(reader)
 	if err != nil {
 		return blockHeader, fmt.Errorf("inconsistent header flags: %w", err)
 	}
-	headerBytesRead += flagsBytes
+	headerBytesRead += flagsBytesSize
 
-	var extraSize uint64
+	var extraAreaSize uint64
 	if (headerFlags & 0x0001) != 0 {
-		var extraBytes int64
-		extraSize, extraBytes, err = readVarInt(reader)
+		var extraSizeLength int64
+		extraAreaSize, extraSizeLength, err = readVarInt(reader)
 		if err != nil {
 			return blockHeader, fmt.Errorf("inconsistent extra area size: %w", err)
 		}
-		headerBytesRead += extraBytes
+		headerBytesRead += extraSizeLength
 	}
-	blockHeader.ExtraAreaSize = int64(extraSize)
 
 	var dataAreaSize uint64
 	if (headerFlags & 0x0002) != 0 {
-		var dataBytes int64
-		dataAreaSize, dataBytes, err = readVarInt(reader)
+		var dataAreaSizeLength int64
+		dataAreaSize, dataAreaSizeLength, err = readVarInt(reader)
 		if err != nil {
 			return blockHeader, fmt.Errorf("inconsistent data area size: %w", err)
 		}
-		headerBytesRead += dataBytes
+		headerBytesRead += dataAreaSizeLength
 	}
 
-	remainingHeaderBytes := int64(rawHeaderSize) - headerBytesRead
-	if remainingHeaderBytes < 0 {
-		return blockHeader, errors.New("inconsistent header size computation")
+	unprocessedHeaderBytes := int64(headerSize) - headerBytesRead
+	if unprocessedHeaderBytes < 0 {
+		return blockHeader, errors.New("inconsistent header size computation: negative remaining bytes")
 	}
-	blockHeader.RemainingHeaderBytes = remainingHeaderBytes
-	blockHeader.BytesToNextBlock = remainingHeaderBytes + int64(dataAreaSize)
+	blockHeader.BytesToReachExtraArea = unprocessedHeaderBytes - int64(extraAreaSize)
+	blockHeader.BytesToReachNextBlock = unprocessedHeaderBytes + int64(dataAreaSize)
 
 	return blockHeader, nil
 }
