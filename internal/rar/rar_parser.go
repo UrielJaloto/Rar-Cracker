@@ -26,6 +26,9 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 	for {
 		blockHeader, err := readBlockHeader(reader)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil, errors.New("nenhuma criptografia encontrada neste arquivo")
+			}
 			return nil, err
 		}
 
@@ -69,10 +72,9 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 
 func readVarInt(reader io.Reader) (decodedValue uint64, bytesRead int64, err error) {
 	var shift uint
-	byteBuffer := make([]byte, 1)
-
+	var byteBuffer [1]byte
 	for {
-		if _, err := io.ReadFull(reader, byteBuffer); err != nil {
+		if _, err := io.ReadFull(reader, byteBuffer[:]); err != nil {
 			return 0, bytesRead, err
 		}
 		byteValue := byteBuffer[0]
