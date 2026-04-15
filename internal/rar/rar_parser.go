@@ -206,7 +206,7 @@ func parseEncryptionHeader(reader io.Reader, hasIV bool) (*domain.EncryptionMeta
 	if err != nil {
 		return nil, fmt.Errorf("failed to read KDF count: %w", err)
 	}
-	iterations := int(kdfCount[0])
+	iterations := 1 << kdfCount[0]
 
 	salt := make([]byte, 16)
 	_, err = io.ReadFull(reader, salt)
