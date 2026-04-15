@@ -29,14 +29,21 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 			return nil, err
 		}
 
-		if blockHeader.HeaderType == endArchiveHeaderType {
+		switch blockHeader.HeaderType {
+		case endArchiveHeaderType:
 			return nil, errors.New("encryption header not found")
-		}
 
-		if (blockHeader.HeaderType == fileHeaderType || blockHeader.HeaderType == serviceHeaderType) && (blockHeader.HasExtraArea) {
+		case encryptionHeaderType:
+			return parseEncryptionHeader(reader, false)
+
+		case fileHeaderType, serviceHeaderType:
+			if !blockHeader.HasExtraArea {
+				break
+			}
+
 			reader.Seek(blockHeader.BytesToReachExtraArea, io.SeekCurrent)
-
 			var bytesProcessed int64
+
 			for bytesProcessed < blockHeader.ExtraAreaSize {
 				var extraAreaRecord *domain.ExtraAreaRecord
 
@@ -52,10 +59,6 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 				bytesProcessed += extraAreaRecord.TotalSize
 			}
 			reader.Seek(-int64(blockHeader.BytesToReachExtraArea+blockHeader.ExtraAreaSize), io.SeekCurrent)
-		}
-
-		if blockHeader.HeaderType == encryptionHeaderType {
-			return parseEncryptionHeader(reader, false)
 		}
 
 		if _, err := reader.Seek(blockHeader.BytesToReachNextBlock, io.SeekCurrent); err != nil {
