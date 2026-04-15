@@ -160,7 +160,12 @@ func readBlockHeader(reader io.Reader) (blockHeader *domain.BlockHeader, err err
 	if unprocessedHeaderBytes < 0 {
 		return blockHeader, errors.New("inconsistent header size computation: negative remaining bytes")
 	}
-	blockHeader.BytesToReachExtraArea = unprocessedHeaderBytes - int64(extraAreaSize)
+	bytesToReachExtraArea := unprocessedHeaderBytes - int64(extraAreaSize)
+	if bytesToReachExtraArea < 0 {
+		return blockHeader, errors.New("corrupted archive: extra area is larger then the header size")
+	}
+
+	blockHeader.BytesToReachExtraArea = bytesToReachExtraArea
 	blockHeader.BytesToReachNextBlock = unprocessedHeaderBytes + int64(dataAreaSize)
 
 	return blockHeader, nil
@@ -219,7 +224,7 @@ func parseEncryptionHeader(reader io.Reader, hasIV bool) (*domain.EncryptionMeta
 
 	var passwordCheck []byte
 	if usePasswordCheck {
-		passwordCheck = make([]byte, 8)
+		passwordCheck = make([]byte, 12)
 		_, err = io.ReadFull(reader, passwordCheck)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read password check: %w", err)
