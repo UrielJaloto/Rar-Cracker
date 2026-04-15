@@ -37,7 +37,7 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 			return nil, errors.New("encryption header not found")
 
 		case encryptionHeaderType:
-			return parseEncryptionHeader(reader, false)
+			return parseEncryptionMetaData(reader, false)
 
 		case fileHeaderType, serviceHeaderType:
 			if !blockHeader.HasExtraArea {
@@ -55,7 +55,7 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 				}
 
 				if extraAreaRecord.Type == 0x01 {
-					return parseEncryptionHeader(reader, true)
+					return parseEncryptionMetaData(reader, true)
 				}
 
 				reader.Seek(extraAreaRecord.BytesToEnd, io.SeekCurrent)
@@ -192,7 +192,7 @@ func readExtraArea(reader io.Reader) (extraArea *domain.ExtraAreaRecord, err err
 	return extraArea, nil
 }
 
-func parseEncryptionHeader(reader io.Reader, hasIV bool) (*domain.EncryptionMetadata, error) {
+func parseEncryptionMetaData(reader io.Reader, hasIV bool) (*domain.EncryptionMetadata, error) {
 	if _, _, err := readVarInt(reader); err != nil {
 		return nil, fmt.Errorf("failed to read encryption version header: %w", err)
 	}
