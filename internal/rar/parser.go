@@ -9,22 +9,19 @@ import (
 	"github.com/UrielJaloto/Rar-Cracker/domain"
 )
 
-var rar5Signature = []byte{0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00}
+type Parser struct{}
 
-const (
-	fileHeaderType       = 0x02
-	serviceHeaderType    = 0x03
-	encryptionHeaderType = 0x04
-	endArchiveHeaderType = 0x05
-)
+func NewParser() *Parser {
+	return &Parser{}
+}
 
-func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata, error) {
-	if err := validateSignature(reader); err != nil {
+func (p *Parser) Extract(reader io.ReadSeeker) (*domain.EncryptionMetadata, error) {
+	if err := p.validateSignature(reader); err != nil {
 		return nil, err
 	}
 
 	for {
-		blockHeader, err := readBlockHeader(reader)
+		blockHeader, err := p.readBlockHeader(reader)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil, errors.New("nenhuma criptografia encontrada neste arquivo")
@@ -32,12 +29,12 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 			return nil, err
 		}
 
-		switch blockHeader.HeaderType {
+		switch blockHeader.Type {
 		case endArchiveHeaderType:
 			return nil, errors.New("encryption header not found")
 
 		case encryptionHeaderType:
-			return parseEncryptionMetaData(reader, false)
+			return p.parseEncryptionMetaData(reader, false)
 
 		case fileHeaderType, serviceHeaderType:
 			if !blockHeader.HasExtraArea {
@@ -48,14 +45,14 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 			var bytesProcessed int64
 
 			for bytesProcessed < blockHeader.ExtraAreaSize {
-				var extraAreaRecord *domain.ExtraAreaRecord
+				var extraAreaRecord *extraAreaRecord
 
-				if extraAreaRecord, err = readExtraArea(reader); err != nil {
+				if extraAreaRecord, err = p.readExtraArea(reader); err != nil {
 					return nil, err
 				}
 
 				if extraAreaRecord.Type == 0x01 {
-					return parseEncryptionMetaData(reader, true)
+					return p.parseEncryptionMetaData(reader, true)
 				}
 
 				reader.Seek(extraAreaRecord.BytesToEnd, io.SeekCurrent)
@@ -70,33 +67,7 @@ func ExtractEncryptionMetadata(reader io.ReadSeeker) (*domain.EncryptionMetadata
 	}
 }
 
-func readVarInt(reader io.Reader) (decodedValue uint64, bytesRead int64, err error) {
-	var shift uint
-	var byteBuffer [1]byte
-	for {
-		if _, err := io.ReadFull(reader, byteBuffer[:]); err != nil {
-			return 0, bytesRead, err
-		}
-		byteValue := byteBuffer[0]
-		bytesRead++
-
-		// & 0x7F (01111111): Strips the 8th bit (continuation flag), keeping only the 7 data bits.
-		// << shift: Moves these 7 bits to their correct position in the final number.
-		// |= (OR): Safely merges the shifted bits into decodedValue without overwriting existing 1s.
-		decodedValue |= uint64((byteValue & 0x7F)) << shift
-
-		if (byteValue & 0x80) == 0 {
-			return decodedValue, bytesRead, nil
-		}
-
-		shift += 7
-		if shift > 64 {
-			return 0, bytesRead, errors.New("variable integer exceeded 64 bits")
-		}
-	}
-}
-
-func validateSignature(reader io.Reader) error {
+func (p *Parser) validateSignature(reader io.Reader) error {
 	signatureLen := len(rar5Signature)
 	fileSignature := make([]byte, signatureLen)
 
@@ -111,70 +82,70 @@ func validateSignature(reader io.Reader) error {
 	return nil
 }
 
-func readBlockHeader(reader io.Reader) (blockHeader *domain.BlockHeader, err error) {
-	blockHeader = &domain.BlockHeader{}
+func (p *Parser) readBlockHeader(reader io.Reader) (header *blockHeader, err error) {
+	header = &blockHeader{}
 
 	headerCrc := make([]byte, 4)
 	if _, err := io.ReadFull(reader, headerCrc); err != nil {
-		return blockHeader, fmt.Errorf("failed to read CRC: %w", err)
+		return header, fmt.Errorf("failed to read CRC: %w", err)
 	}
 
 	headerSize, _, err := readVarInt(reader)
 	if err != nil {
-		return blockHeader, fmt.Errorf("failed to read header size: %w", err)
+		return header, fmt.Errorf("failed to read header size: %w", err)
 	}
 
 	headerType, headerTypeLength, err := readVarInt(reader)
 	if err != nil {
-		return blockHeader, fmt.Errorf("failed to read header type: %w", err)
+		return header, fmt.Errorf("failed to read header type: %w", err)
 	}
-	blockHeader.HeaderType = headerType
+	header.Type = headerType
 	headerBytesRead := headerTypeLength
 
 	headerFlags, flagsBytesSize, err := readVarInt(reader)
 	if err != nil {
-		return blockHeader, fmt.Errorf("inconsistent header flags: %w", err)
+		return header, fmt.Errorf("inconsistent header flags: %w", err)
 	}
 	headerBytesRead += flagsBytesSize
 
 	var extraAreaSize uint64
-	if blockHeader.HasExtraArea = (headerFlags & 0x0001) != 0; blockHeader.HasExtraArea {
+	if header.HasExtraArea = (headerFlags & 0x0001) != 0; header.HasExtraArea {
 		var extraSizeLength int64
 		extraAreaSize, extraSizeLength, err = readVarInt(reader)
 		if err != nil {
-			return blockHeader, fmt.Errorf("inconsistent extra area size: %w", err)
+			return header, fmt.Errorf("inconsistent extra area size: %w", err)
 		}
 		headerBytesRead += extraSizeLength
 	}
-	blockHeader.ExtraAreaSize = int64(extraAreaSize)
+	header.ExtraAreaSize = int64(extraAreaSize)
 
 	var dataAreaSize uint64
-	if blockHeader.HasDataArea = (headerFlags & 0x0002) != 0; blockHeader.HasDataArea {
+	if header.HasDataArea = (headerFlags & 0x0002) != 0; header.HasDataArea {
 		var dataAreaSizeLength int64
 		dataAreaSize, dataAreaSizeLength, err = readVarInt(reader)
 		if err != nil {
-			return blockHeader, fmt.Errorf("inconsistent data area size: %w", err)
+			return header, fmt.Errorf("inconsistent data area size: %w", err)
 		}
 		headerBytesRead += dataAreaSizeLength
 	}
 
 	unprocessedHeaderBytes := int64(headerSize) - headerBytesRead
 	if unprocessedHeaderBytes < 0 {
-		return blockHeader, errors.New("inconsistent header size computation: negative remaining bytes")
+		return header, errors.New("inconsistent header size computation: negative remaining bytes")
 	}
 	bytesToReachExtraArea := unprocessedHeaderBytes - int64(extraAreaSize)
 	if bytesToReachExtraArea < 0 {
-		return blockHeader, errors.New("corrupted archive: extra area is larger then the header size")
+		return header, errors.New("corrupted archive: extra area is larger then the header size")
 	}
 
-	blockHeader.BytesToReachExtraArea = bytesToReachExtraArea
-	blockHeader.BytesToReachNextBlock = unprocessedHeaderBytes + int64(dataAreaSize)
+	header.BytesToReachExtraArea = bytesToReachExtraArea
+	header.BytesToReachNextBlock = unprocessedHeaderBytes + int64(dataAreaSize)
 
-	return blockHeader, nil
+	return header, nil
 }
 
-func readExtraArea(reader io.Reader) (extraArea *domain.ExtraAreaRecord, err error) {
-	extraArea = &domain.ExtraAreaRecord{}
+func (p *Parser) readExtraArea(reader io.Reader) (extraArea *extraAreaRecord, err error) {
+	extraArea = &extraAreaRecord{}
 
 	extraAreaSize, extraAreaSizeLength, err := readVarInt(reader)
 	if err != nil {
@@ -192,7 +163,7 @@ func readExtraArea(reader io.Reader) (extraArea *domain.ExtraAreaRecord, err err
 	return extraArea, nil
 }
 
-func parseEncryptionMetaData(reader io.Reader, hasIV bool) (*domain.EncryptionMetadata, error) {
+func (p *Parser) parseEncryptionMetaData(reader io.Reader, hasIV bool) (*domain.EncryptionMetadata, error) {
 	if _, _, err := readVarInt(reader); err != nil {
 		return nil, fmt.Errorf("failed to read encryption version header: %w", err)
 	}
@@ -239,4 +210,30 @@ func parseEncryptionMetaData(reader io.Reader, hasIV bool) (*domain.EncryptionMe
 		Salt:             salt,
 		PasswordCheck:    passwordCheck,
 	}, nil
+}
+
+func readVarInt(reader io.Reader) (decodedValue uint64, bytesRead int64, err error) {
+	var shift uint
+	var byteBuffer [1]byte
+	for {
+		if _, err := io.ReadFull(reader, byteBuffer[:]); err != nil {
+			return 0, bytesRead, err
+		}
+		byteValue := byteBuffer[0]
+		bytesRead++
+
+		// & 0x7F (01111111): Strips the 8th bit (continuation flag), keeping only the 7 data bits.
+		// << shift: Moves these 7 bits to their correct position in the final number.
+		// |= (OR): Safely merges the shifted bits into decodedValue without overwriting existing 1s.
+		decodedValue |= uint64((byteValue & 0x7F)) << shift
+
+		if (byteValue & 0x80) == 0 {
+			return decodedValue, bytesRead, nil
+		}
+
+		shift += 7
+		if shift > 64 {
+			return 0, bytesRead, errors.New("variable integer exceeded 64 bits")
+		}
+	}
 }

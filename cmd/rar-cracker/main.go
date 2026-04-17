@@ -39,7 +39,12 @@ func main() {
 	}
 	defer file.Close()
 
-	encryptionMetadata, err := rar.ExtractEncryptionMetadata(file)
+	var extractor domain.MetadataExtractor = rar.NewParser()
+	encryptionMetadata, err := extractor.Extract(file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing encryption metadata: %v\n", err)
+		os.Exit(1)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing encryption metadata: %v\n", err)
 		os.Exit(1)

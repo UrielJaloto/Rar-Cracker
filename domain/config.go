@@ -5,6 +5,9 @@ import (
 	"unicode/utf8"
 )
 
+type ConfigLoader interface {
+	Load() (*Config, error)
+}
 type Config struct {
 	CharsetPath   string
 	FilePath      string
