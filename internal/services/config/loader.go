@@ -9,7 +9,7 @@ import (
 	"github.com/UrielJaloto/Rar-Cracker/internal/services/utils"
 )
 
-func NewLoader() infraestructure.ConfigInterface {
+func NewLoader() infraestructure.ConfigLoaderInterface {
 	return &FlagLoader{}
 }
 

@@ -37,13 +37,13 @@ type Parser struct {
 	reader io.ReadSeeker
 }
 
-func NewParser(ioReader io.ReadSeeker) *Parser {
-	return &Parser{
-		reader: ioReader,
-	}
+func NewParser() *Parser {
+	return &Parser{}
 }
 
-func (p *Parser) Extract() (*domain.EncryptionMetadata, error) {
+func (p *Parser) Extract(ioReader io.ReadSeeker) (*domain.EncryptionMetadata, error) {
+	p.reader = ioReader
+
 	if err := p.validateSignature(); err != nil {
 		return nil, err
 	}

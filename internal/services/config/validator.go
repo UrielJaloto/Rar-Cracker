@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
+	"github.com/UrielJaloto/Rar-Cracker/internal/infraestructure"
 )
 
 const (
@@ -20,11 +21,11 @@ const (
 
 type Validator struct{}
 
-func NewValidator() *Validator {
+func NewValidator() infraestructure.ConfigValidatorInterface {
 	return &Validator{}
 }
 
-func (v *Validator) Validate(settings *domain.Config) ([]string, error) {
+func (v *Validator) Validate(settings *domain.Config) (warings []string, err error) {
 	var errs []error
 	var warnings []string
 
@@ -61,15 +62,15 @@ func (v *Validator) Validate(settings *domain.Config) ([]string, error) {
 	return warnings, errors.Join(errs...)
 }
 
-func (v *Validator) validateFilePath(settings *domain.Config) error {
+func (v *Validator) validateFilePath(settings *domain.Config) (err error) {
 	if _, err := os.Stat(settings.FilePath); os.IsNotExist(err) {
 		return fmt.Errorf("File not found: %s", settings.FilePath)
 	}
 	return nil
 }
 
-func (v *Validator) validateResources(settings *domain.Config) ([]string, error) {
-	var warnings []string
+func (v *Validator) validateResources(settings *domain.Config) (warnings []string, err error) {
+	warnings = make([]string, 0)
 	if settings.Workers <= 0 {
 		return nil, fmt.Errorf("workers must be positive (got %d)", settings.Workers)
 	}
