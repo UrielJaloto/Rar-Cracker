@@ -1,4 +1,4 @@
-package config
+package services
 
 import (
 	"errors"
@@ -21,7 +21,7 @@ const (
 
 type Validator struct{}
 
-func NewValidator() infraestructure.ConfigValidatorInterface {
+func NewConfigValidator() infraestructure.ConfigValidatorInterface {
 	return &Validator{}
 }
 
@@ -32,9 +32,11 @@ func (v *Validator) Validate(settings *domain.Config) (warings []string, err err
 	if strings.TrimSpace(settings.CharsetPath) == "" {
 		errs = append(errs, errors.New("charset path is required"))
 	}
+
 	if strings.TrimSpace(settings.FilePath) == "" {
 		errs = append(errs, errors.New("file path is required"))
 	}
+
 	if len(settings.Charset) == 0 && settings.CharsetPath != "" {
 		errs = append(errs, errors.New("charset is empty"))
 	}

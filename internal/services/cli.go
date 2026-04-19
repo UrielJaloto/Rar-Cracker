@@ -1,4 +1,4 @@
-package ui
+package services
 
 import (
 	"fmt"
@@ -9,11 +9,11 @@ import (
 	"github.com/UrielJaloto/Rar-Cracker/internal/infraestructure"
 )
 
+type cli struct{}
+
 func NewCli() infraestructure.UiInterface {
 	return &cli{}
 }
-
-type cli struct{}
 
 func (c cli) ShowWarnings(warnings []string) {
 	fmt.Println("(WARNINGS):")

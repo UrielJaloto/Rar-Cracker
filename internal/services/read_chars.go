@@ -1,11 +1,11 @@
-package utils
+package services
 
 import (
 	"os"
 	"strings"
 )
 
-func ReadChars(filePath string) ([]rune, error) {
+func readChars(filePath string) ([]rune, error) {
 	bytesContent, err := os.ReadFile(filePath)
 
 	if err != nil {
@@ -16,8 +16,8 @@ func ReadChars(filePath string) ([]rune, error) {
 	return []rune(cleanString), nil
 }
 
-func ReadUniqueChars(filePath string) ([]rune, error) {
-	allChars, err := ReadChars(filePath)
+func readUniqueChars(filePath string) ([]rune, error) {
+	allChars, err := readChars(filePath)
 	if err != nil {
 		return nil, err
 	}

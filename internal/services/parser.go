@@ -1,4 +1,4 @@
-package rar
+package services
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
+	"github.com/UrielJaloto/Rar-Cracker/internal/infraestructure"
 )
 
 type blockHeader struct {
@@ -37,7 +38,7 @@ type Parser struct {
 	reader io.ReadSeeker
 }
 
-func NewParser() *Parser {
+func NewParser() infraestructure.ParserInterface {
 	return &Parser{}
 }
 

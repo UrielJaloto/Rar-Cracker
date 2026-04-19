@@ -4,28 +4,25 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/UrielJaloto/Rar-Cracker/internal/services/config"
-	"github.com/UrielJaloto/Rar-Cracker/internal/services/rar"
-	"github.com/UrielJaloto/Rar-Cracker/internal/services/ui"
+	"github.com/UrielJaloto/Rar-Cracker/internal/services"
 )
 
 func main() {
-	configLoader := config.NewLoader()
+	configLoader := services.NewFlagLoader()
+	validator := services.NewConfigValidator()
+	userInterface := services.NewCli()
+	extractor := services.NewParser()
+
 	settings, err := configLoader.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
-	validator := config.NewValidator()
 	warnings, err := validator.Validate(settings)
-
-	userInterface := ui.NewCli()
-
 	if len(warnings) > 0 {
 		userInterface.ShowWarnings(warnings)
 	}
-
 	if err != nil {
 		userInterface.ShowErrors(err)
 		os.Exit(1)
@@ -40,7 +37,6 @@ func main() {
 	}
 	defer file.Close()
 
-	extractor := rar.NewParser()
 	encryptionMetadata, err := extractor.Extract(file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing encryption metadata: %v\n", err)
