@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/UrielJaloto/Rar-Cracker/internal/services"
+	"github.com/UrielJaloto/Rar-Cracker/internal/infrastructure"
 )
 
 func main() {
-	configLoader := services.NewFlagLoader()
-	validator := services.NewConfigValidator()
-	userInterface := services.NewCli()
-	extractor := services.NewParser()
+	configLoader := infrastructure.NewFlagLoader()
+	validator := infrastructure.NewConfigValidator()
+	userInterface := infrastructure.NewCli()
+	extractor := infrastructure.NewParser()
 
 	settings, err := configLoader.Load()
 	if err != nil {

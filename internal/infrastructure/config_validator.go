@@ -1,16 +1,15 @@
-package services
+package infrastructure
 
 import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
 	"runtime"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
-	"github.com/UrielJaloto/Rar-Cracker/internal/infraestructure"
+	"github.com/UrielJaloto/Rar-Cracker/internal/services"
 )
 
 const (
@@ -21,7 +20,7 @@ const (
 
 type Validator struct{}
 
-func NewConfigValidator() infraestructure.ConfigValidatorInterface {
+func NewConfigValidator() services.ConfigValidatorInterface {
 	return &Validator{}
 }
 
@@ -45,10 +44,6 @@ func (v *Validator) Validate(settings *domain.Config) (warings []string, err err
 		return nil, errors.Join(errs...)
 	}
 
-	if err := v.validateFilePath(settings); err != nil {
-		errs = append(errs, err)
-	}
-
 	resourcesWarnings, err := v.validateResources(settings)
 	warnings = append(warnings, resourcesWarnings...)
 	if err != nil {
@@ -62,13 +57,6 @@ func (v *Validator) Validate(settings *domain.Config) (warings []string, err err
 	}
 
 	return warnings, errors.Join(errs...)
-}
-
-func (v *Validator) validateFilePath(settings *domain.Config) (err error) {
-	if _, err := os.Stat(settings.FilePath); os.IsNotExist(err) {
-		return fmt.Errorf("File not found: %s", settings.FilePath)
-	}
-	return nil
 }
 
 func (v *Validator) validateResources(settings *domain.Config) (warnings []string, err error) {

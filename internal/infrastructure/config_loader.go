@@ -1,16 +1,16 @@
-package services
+package infrastructure
 
 import (
 	"flag"
 	"fmt"
 
 	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
-	"github.com/UrielJaloto/Rar-Cracker/internal/infraestructure"
+	"github.com/UrielJaloto/Rar-Cracker/internal/services"
 )
 
 type FlagLoader struct{}
 
-func NewFlagLoader() infraestructure.ConfigLoaderInterface {
+func NewFlagLoader() services.ConfigLoaderInterface {
 	return &FlagLoader{}
 }
 

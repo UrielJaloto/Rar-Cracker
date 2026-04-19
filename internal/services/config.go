@@ -1,4 +1,4 @@
-package infraestructure
+package services
 
 import "github.com/UrielJaloto/Rar-Cracker/internal/domain"
 

@@ -1,4 +1,4 @@
-package services
+package infrastructure
 
 import (
 	"fmt"
@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
-	"github.com/UrielJaloto/Rar-Cracker/internal/infraestructure"
+	"github.com/UrielJaloto/Rar-Cracker/internal/services"
 )
 
 type cli struct{}
 
-func NewCli() infraestructure.UiInterface {
+func NewCli() services.UiInterface {
 	return &cli{}
 }
 
