@@ -6,22 +6,50 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/UrielJaloto/Rar-Cracker/domain"
+	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
 )
 
-type Parser struct{}
-
-func NewParser() *Parser {
-	return &Parser{}
+type blockHeader struct {
+	Type                  uint64
+	HasExtraArea          bool
+	HasDataArea           bool
+	ExtraAreaSize         int64
+	BytesToReachNextBlock int64
+	BytesToReachExtraArea int64
 }
 
-func (p *Parser) Extract(reader io.ReadSeeker) (*domain.EncryptionMetadata, error) {
-	if err := p.validateSignature(reader); err != nil {
+type extraAreaRecord struct {
+	TotalSize  int64
+	Type       uint64
+	BytesToEnd int64
+}
+
+var rar5Signature = []byte{0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00}
+
+const (
+	fileHeaderType       = 0x02
+	serviceHeaderType    = 0x03
+	encryptionHeaderType = 0x04
+	endArchiveHeaderType = 0x05
+)
+
+type Parser struct {
+	reader io.ReadSeeker
+}
+
+func NewParser(ioReader io.ReadSeeker) *Parser {
+	return &Parser{
+		reader: ioReader,
+	}
+}
+
+func (p *Parser) Extract() (*domain.EncryptionMetadata, error) {
+	if err := p.validateSignature(); err != nil {
 		return nil, err
 	}
 
 	for {
-		blockHeader, err := p.readBlockHeader(reader)
+		blockHeader, err := p.readBlockHeader()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil, errors.New("nenhuma criptografia encontrada neste arquivo")
@@ -34,44 +62,44 @@ func (p *Parser) Extract(reader io.ReadSeeker) (*domain.EncryptionMetadata, erro
 			return nil, errors.New("encryption header not found")
 
 		case encryptionHeaderType:
-			return p.parseEncryptionMetaData(reader, false)
+			return p.parseEncryptionMetaData(false)
 
 		case fileHeaderType, serviceHeaderType:
 			if !blockHeader.HasExtraArea {
 				break
 			}
 
-			reader.Seek(blockHeader.BytesToReachExtraArea, io.SeekCurrent)
+			p.reader.Seek(blockHeader.BytesToReachExtraArea, io.SeekCurrent)
 			var bytesProcessed int64
 
 			for bytesProcessed < blockHeader.ExtraAreaSize {
 				var extraAreaRecord *extraAreaRecord
 
-				if extraAreaRecord, err = p.readExtraArea(reader); err != nil {
+				if extraAreaRecord, err = p.readExtraArea(); err != nil {
 					return nil, err
 				}
 
 				if extraAreaRecord.Type == 0x01 {
-					return p.parseEncryptionMetaData(reader, true)
+					return p.parseEncryptionMetaData(true)
 				}
 
-				reader.Seek(extraAreaRecord.BytesToEnd, io.SeekCurrent)
+				p.reader.Seek(extraAreaRecord.BytesToEnd, io.SeekCurrent)
 				bytesProcessed += extraAreaRecord.TotalSize
 			}
-			reader.Seek(-int64(blockHeader.BytesToReachExtraArea+blockHeader.ExtraAreaSize), io.SeekCurrent)
+			p.reader.Seek(-int64(blockHeader.BytesToReachExtraArea+blockHeader.ExtraAreaSize), io.SeekCurrent)
 		}
 
-		if _, err := reader.Seek(blockHeader.BytesToReachNextBlock, io.SeekCurrent); err != nil {
+		if _, err := p.reader.Seek(blockHeader.BytesToReachNextBlock, io.SeekCurrent); err != nil {
 			return nil, fmt.Errorf("failed to skip header body: %w", err)
 		}
 	}
 }
 
-func (p *Parser) validateSignature(reader io.Reader) error {
+func (p *Parser) validateSignature() error {
 	signatureLen := len(rar5Signature)
 	fileSignature := make([]byte, signatureLen)
 
-	if _, err := io.ReadFull(reader, fileSignature); err != nil {
+	if _, err := io.ReadFull(p.reader, fileSignature); err != nil {
 		return fmt.Errorf("failed to read signature: %w", err)
 	}
 
@@ -82,27 +110,27 @@ func (p *Parser) validateSignature(reader io.Reader) error {
 	return nil
 }
 
-func (p *Parser) readBlockHeader(reader io.Reader) (header *blockHeader, err error) {
+func (p *Parser) readBlockHeader() (header *blockHeader, err error) {
 	header = &blockHeader{}
 
 	headerCrc := make([]byte, 4)
-	if _, err := io.ReadFull(reader, headerCrc); err != nil {
+	if _, err := io.ReadFull(p.reader, headerCrc); err != nil {
 		return header, fmt.Errorf("failed to read CRC: %w", err)
 	}
 
-	headerSize, _, err := readVarInt(reader)
+	headerSize, _, err := readVarInt(p.reader)
 	if err != nil {
 		return header, fmt.Errorf("failed to read header size: %w", err)
 	}
 
-	headerType, headerTypeLength, err := readVarInt(reader)
+	headerType, headerTypeLength, err := readVarInt(p.reader)
 	if err != nil {
 		return header, fmt.Errorf("failed to read header type: %w", err)
 	}
 	header.Type = headerType
 	headerBytesRead := headerTypeLength
 
-	headerFlags, flagsBytesSize, err := readVarInt(reader)
+	headerFlags, flagsBytesSize, err := readVarInt(p.reader)
 	if err != nil {
 		return header, fmt.Errorf("inconsistent header flags: %w", err)
 	}
@@ -111,7 +139,7 @@ func (p *Parser) readBlockHeader(reader io.Reader) (header *blockHeader, err err
 	var extraAreaSize uint64
 	if header.HasExtraArea = (headerFlags & 0x0001) != 0; header.HasExtraArea {
 		var extraSizeLength int64
-		extraAreaSize, extraSizeLength, err = readVarInt(reader)
+		extraAreaSize, extraSizeLength, err = readVarInt(p.reader)
 		if err != nil {
 			return header, fmt.Errorf("inconsistent extra area size: %w", err)
 		}
@@ -122,7 +150,7 @@ func (p *Parser) readBlockHeader(reader io.Reader) (header *blockHeader, err err
 	var dataAreaSize uint64
 	if header.HasDataArea = (headerFlags & 0x0002) != 0; header.HasDataArea {
 		var dataAreaSizeLength int64
-		dataAreaSize, dataAreaSizeLength, err = readVarInt(reader)
+		dataAreaSize, dataAreaSizeLength, err = readVarInt(p.reader)
 		if err != nil {
 			return header, fmt.Errorf("inconsistent data area size: %w", err)
 		}
@@ -144,16 +172,16 @@ func (p *Parser) readBlockHeader(reader io.Reader) (header *blockHeader, err err
 	return header, nil
 }
 
-func (p *Parser) readExtraArea(reader io.Reader) (extraArea *extraAreaRecord, err error) {
+func (p *Parser) readExtraArea() (extraArea *extraAreaRecord, err error) {
 	extraArea = &extraAreaRecord{}
 
-	extraAreaSize, extraAreaSizeLength, err := readVarInt(reader)
+	extraAreaSize, extraAreaSizeLength, err := readVarInt(p.reader)
 	if err != nil {
 		return nil, err
 	}
 	extraArea.TotalSize = int64(extraAreaSize) + extraAreaSizeLength
 
-	extraAreaType, extraAreaTypeLength, err := readVarInt(reader)
+	extraAreaType, extraAreaTypeLength, err := readVarInt(p.reader)
 	if err != nil {
 		return nil, err
 	}
@@ -163,33 +191,33 @@ func (p *Parser) readExtraArea(reader io.Reader) (extraArea *extraAreaRecord, er
 	return extraArea, nil
 }
 
-func (p *Parser) parseEncryptionMetaData(reader io.Reader, hasIV bool) (*domain.EncryptionMetadata, error) {
-	if _, _, err := readVarInt(reader); err != nil {
+func (p *Parser) parseEncryptionMetaData(hasIV bool) (*domain.EncryptionMetadata, error) {
+	if _, _, err := readVarInt(p.reader); err != nil {
 		return nil, fmt.Errorf("failed to read encryption version header: %w", err)
 	}
 
-	encryptionFlags, _, err := readVarInt(reader)
+	encryptionFlags, _, err := readVarInt(p.reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read encryption flags: %w", err)
 	}
 	usePasswordCheck := (encryptionFlags & 0x0001) != 0
 
 	kdfCount := make([]byte, 1)
-	_, err = io.ReadFull(reader, kdfCount)
+	_, err = io.ReadFull(p.reader, kdfCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read KDF count: %w", err)
 	}
 	iterations := 1 << kdfCount[0]
 
 	salt := make([]byte, 16)
-	_, err = io.ReadFull(reader, salt)
+	_, err = io.ReadFull(p.reader, salt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read salt: %w", err)
 	}
 
 	if hasIV {
 		iv := make([]byte, 16)
-		if _, err := io.ReadFull(reader, iv); err != nil {
+		if _, err := io.ReadFull(p.reader, iv); err != nil {
 			return nil, err
 		}
 
@@ -198,7 +226,7 @@ func (p *Parser) parseEncryptionMetaData(reader io.Reader, hasIV bool) (*domain.
 	var passwordCheck []byte
 	if usePasswordCheck {
 		passwordCheck = make([]byte, 12)
-		_, err = io.ReadFull(reader, passwordCheck)
+		_, err = io.ReadFull(p.reader, passwordCheck)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read password check: %w", err)
 		}

@@ -4,15 +4,16 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/UrielJaloto/Rar-Cracker/domain"
-	"github.com/UrielJaloto/Rar-Cracker/internal/utils"
+	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
+	"github.com/UrielJaloto/Rar-Cracker/internal/infraestructure"
+	"github.com/UrielJaloto/Rar-Cracker/internal/services/utils"
 )
 
-type FlagLoader struct{}
-
-func NewLoader() *FlagLoader {
+func NewLoader() infraestructure.ConfigInterface {
 	return &FlagLoader{}
 }
+
+type FlagLoader struct{}
 
 func (f *FlagLoader) Load() (*domain.Config, error) {
 	var charsetPath, filePath, knownPart, stateFile string

@@ -1,9 +1,7 @@
 package domain
 
-import "io"
-
 type MetadataExtractor interface {
-	Extract(reader io.ReadSeeker) (*EncryptionMetadata, error)
+	Extract() (*EncryptionMetadata, error)
 }
 
 type EncryptionMetadata struct {

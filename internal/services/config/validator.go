@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/UrielJaloto/Rar-Cracker/domain"
+	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
 )
 
 const (
