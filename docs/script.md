@@ -18,19 +18,20 @@ tente descobrir a senha completa.
 - **Simplicidade:** dependência mínima, apenas biblioteca padrão do Go.  
 
 
-## 2. Arquitetura e Componentes
+## 2. Arquitetura e Componentes 
 
-- **cmd/** → ponto de entrada (`main.go`), que apenas orquestra a execução.  
-- **internal/** → implementações concretas (parsing, workers, geração de senhas, persistência e UI).  
-- **domain/** → contratos, modelos e entidades que representam as regras de negócio centrais.  
+- **internal/cmd/** → ponto de entrada (`main.go`), que apenas orquestra a execução.  
+- **internal/domain/** → entidades, modelos e regras de negócio centrais.
+- **internal/services/** → contratos (interfaces) que definem as operações e os casos de uso.
+- **internal/infrastructure/** → implementações concretas e adaptadores (parsing, loaders, validações e UI).
 
 
 ## 3. Etapas de Desenvolvimento
 
 ### Etapa 1 — Configuração  
 Parsing dos argumentos de linha de comando.  
-- Parâmetros obrigatórios: `-file`,  `-charset`.  
-- Parâmetros opcionais: `-knownPart`, `-maxLength`, `-workers`, `-stateFile`.  
+- Parâmetros obrigatórios: `--file`,  `--charset`.  
+- Parâmetros opcionais: `--known-part`, `--max-length`, `--workers`, `--state-file`.  
 
 ### Etapa 2 — Análise do Arquivo RAR  
 Leitura do cabeçalho do RAR5 e extração das informações criptográficas necessárias para validação das senhas.  
@@ -71,36 +72,28 @@ Responsabilidade do `main.go`.
 ## 5. Estrutura de Arquivos
 
 * rar-cracker/
-* ├── cmd/
-* │   └── rar-cracker/
-* │   │   └── main.go
+* ├── docs/
 * │
-* ├── internal/ ................................................ # Implementações específicas (infra)
-* │   ├── config/ ............................................... # Parsing de flags e configuração
+* ├── internal/
+* │   ├── cmd/
+* │   │   └── rar-cracker/
+* │   │       └── main.go
+* │   │
+* │   ├── domain/ ........................ (entidades e modelos)
 * │   │   ├── config.go
-* │   │   └── config_validations.go
+* │   │   └── encryption_metadata.go
 * │   │
-* │   ├── generator/ ....................................... # Geração de senhas
-* │   │   └── generator.go
+* │   ├── infrastructure/ ...................................... (adaptadores)
+* │   │   ├── cli.go
+* │   │   ├── config_loader.go
+* │   │   ├── config_validator.go
+* │   │   ├── parser.go
+* │   │   └── read_chars.go
 * │   │
-* │   ├── rar/ ..................................................... # Leitura do cabeçalho do arquivo RAR
-* │   │   └── parser.go
-* │   │
-* │   ├── state/ .................................................. # Persistência de estado (pausar/retomar)
-* │   │   └── state.go
-* │   │
-* │   ├── ui/ ........................................................ # UI do terminal (barra de progresso)
-* │   │   └── ui.go
-* │   │
-* │   └── worker/ ............................................. # Worker para teste de senhas (CPU-bound)
-* │       └── worker.go
-* │
-* ├── domain/ ................................................ # Regras de negócio (entidades e contratos)
-* │   ├── encryption_metadata.go ............................. # Estruturas de dados e entidades
-* │   ├── worker_service.go .......................... # Contrato do serviço de workers
-* │   ├── generator_service.go .................... # Contrato do gerador de senhas
-* │   └── state_model.go
+* │   └── services/ ............................................ (interfaces)
+* │       ├── config.go
+* │       ├── parser.go
+* │       └── ui.go
 * │
 * ├── go.mod
-* ├── go.sum
 * └── README.md
