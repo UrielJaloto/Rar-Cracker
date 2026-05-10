@@ -1,7 +1,7 @@
 package services
 
-import "github.com/UrielJaloto/Rar-Cracker/internal/domain"
+import "context"
 
 type CryptographicWorkerInterface interface {
-	DeriveKey(config *domain.EncryptionMetadata) (err error)
+	TryToBreak(ctx context.Context, passwordAttempt string) (err error)
 }

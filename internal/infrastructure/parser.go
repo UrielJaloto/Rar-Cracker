@@ -96,7 +96,7 @@ func (p *Parser) Extract(ioReader io.ReadSeeker) (*domain.EncryptionMetadata, er
 	}
 }
 
-func (p *Parser) validateSignature() error {
+func (p *Parser) validateSignature() (err error) {
 	signatureLen := len(rar5Signature)
 	fileSignature := make([]byte, signatureLen)
 
