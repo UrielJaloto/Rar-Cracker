@@ -1,6 +1,6 @@
 package services
 
-import "github.com/UrielJaloto/Rar-Cracker/internal/domain"
+import "github.com/UrielJaloto/surgical-rar-recovery/internal/domain"
 
 type ConfigLoaderInterface interface {
 	Load() (*domain.Config, error)

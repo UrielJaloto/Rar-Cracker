@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/UrielJaloto/Rar-Cracker/internal/infrastructure"
+	"github.com/UrielJaloto/surgical-rar-recovery/internal/infrastructure"
 )
 
 func main() {

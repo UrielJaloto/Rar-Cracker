@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/UrielJaloto/Rar-Cracker/internal/domain"
-	"github.com/UrielJaloto/Rar-Cracker/internal/services"
+	"github.com/UrielJaloto/surgical-rar-recovery/internal/domain"
+	"github.com/UrielJaloto/surgical-rar-recovery/internal/services"
 )
 
 const (

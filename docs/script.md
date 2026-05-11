@@ -1,4 +1,4 @@
-# Roteiro do Projeto: Rar-Cracker
+# Roteiro do Projeto: surgical-rar-recovery
 
 Este documento descreve a especificação do projeto **rar-cracker**, 
 uma ferramenta de linha de comando para recuperação de senhas de arquivos RAR5.  
