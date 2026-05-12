@@ -9,7 +9,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/UrielJaloto/surgical-rar-recovery/internal/domain"
-	"github.com/UrielJaloto/surgical-rar-recovery/internal/services"
 )
 
 const (
@@ -20,7 +19,7 @@ const (
 
 type Validator struct{}
 
-func NewConfigValidator() services.ConfigValidatorInterface {
+func NewConfigValidator() *Validator {
 	return &Validator{}
 }
 

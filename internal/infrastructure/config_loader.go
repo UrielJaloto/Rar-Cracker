@@ -5,12 +5,11 @@ import (
 	"fmt"
 
 	"github.com/UrielJaloto/surgical-rar-recovery/internal/domain"
-	"github.com/UrielJaloto/surgical-rar-recovery/internal/services"
 )
 
 type FlagLoader struct{}
 
-func NewFlagLoader() services.ConfigLoaderInterface {
+func NewFlagLoader() *FlagLoader {
 	return &FlagLoader{}
 }
 

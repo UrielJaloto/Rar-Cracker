@@ -7,7 +7,6 @@ import (
 	"io"
 
 	"github.com/UrielJaloto/surgical-rar-recovery/internal/domain"
-	"github.com/UrielJaloto/surgical-rar-recovery/internal/services"
 )
 
 type blockHeader struct {
@@ -38,7 +37,7 @@ type Parser struct {
 	reader io.ReadSeeker
 }
 
-func NewParser() services.ParserInterface {
+func NewParser() *Parser {
 	return &Parser{}
 }
 

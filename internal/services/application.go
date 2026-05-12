@@ -3,17 +3,26 @@ package services
 import (
 	"fmt"
 	"os"
+
+	"github.com/UrielJaloto/surgical-rar-recovery/internal/infrastructure"
 )
 
 type Application struct {
-	configLoader    ConfigLoaderInterface
-	configValidator ConfigValidatorInterface
-	ui              UiInterface
-	parser          ParserInterface
+	configLoader        ConfigLoaderInterface
+	configValidator     ConfigValidatorInterface
+	ui                  UiInterface
+	parser              ParserInterface
+	cryptographicWorker CryptographicWorkerInterface
 }
 
-func NewApplication(configLoader ConfigLoaderInterface, configValidator ConfigValidatorInterface, ui UiInterface, parser ParserInterface) Application {
-	return Application{configLoader, configValidator, ui, parser}
+func NewApplication() Application {
+	configLoader := infrastructure.NewFlagLoader()
+	configValidator := infrastructure.NewConfigValidator()
+	ui := infrastructure.NewCli()
+	parser := infrastructure.NewParser()
+	cryptographicWorker := infrastructure.NewPbkdf2Worker()
+
+	return Application{configLoader, configValidator, ui, parser, cryptographicWorker}
 }
 
 func (app Application) Run() {
