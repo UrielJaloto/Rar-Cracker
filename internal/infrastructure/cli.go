@@ -39,6 +39,7 @@ func (c cli) ShowConfiguration(config *domain.Config) {
 	fmt.Printf("    State File     : %s\n", config.StateFilePath)
 	fmt.Printf("    Max Length     : %d\n", config.MaxLength)
 	fmt.Printf("    Workers        : %d\n", config.Workers)
+	println()
 }
 
 func (c cli) ShowEncryptionMetadata(metaData *domain.EncryptionMetadata) {
@@ -47,4 +48,5 @@ func (c cli) ShowEncryptionMetadata(metaData *domain.EncryptionMetadata) {
 	fmt.Printf("    Salt               : %x\n", metaData.Salt)
 	fmt.Printf("    Iterations         : %d\n", metaData.Iterations)
 	fmt.Printf("    UsePassword Check  : %t\n", metaData.UsePasswordCheck)
+	println()
 }

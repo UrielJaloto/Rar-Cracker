@@ -1,61 +1,92 @@
 package services
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/UrielJaloto/surgical-rar-recovery/internal/infrastructure"
+	"github.com/UrielJaloto/surgical-rar-recovery/internal/domain"
 )
 
 type Application struct {
-	configLoader        ConfigLoaderInterface
-	configValidator     ConfigValidatorInterface
-	ui                  UiInterface
+	settingsBuilder *SettingsBuilder
+	ui              UiInterface
+	recoveryEngine  *RecoveryEngine
+}
+
+func NewApplication(settingsBuilder *SettingsBuilder, ui UiInterface, recoveryEngine *RecoveryEngine) Application {
+	return Application{settingsBuilder, ui, recoveryEngine}
+}
+
+func (app Application) Run() (err error) {
+	settings, validationReport := app.settingsBuilder.Build()
+
+	if len(validationReport.Warnings) > 0 {
+		app.ui.ShowWarnings(validationReport.Warnings)
+	}
+	if validationReport.Err != nil {
+		app.ui.ShowErrors(validationReport.Err)
+		err = validationReport.Err
+		return err
+	}
+	app.ui.ShowConfiguration(settings)
+
+	var encryptionMetadata *domain.EncryptionMetadata
+	encryptionMetadata, err = app.recoveryEngine.ParseMetadata(settings)
+	if err != nil {
+		app.ui.ShowErrors(err)
+		return err
+	}
+
+	app.ui.ShowEncryptionMetadata(encryptionMetadata)
+	return err
+}
+
+type SettingsBuilder struct {
+	configLoader    ConfigLoaderInterface
+	configValidator ConfigValidatorInterface
+}
+
+func NewSettingsBuilder(configLoader ConfigLoaderInterface, configValidator ConfigValidatorInterface) (settingsBuilder *SettingsBuilder) {
+	settingsBuilder = &SettingsBuilder{configLoader, configValidator}
+	return settingsBuilder
+}
+
+func (sb SettingsBuilder) Build() (settings *domain.Config, validationReport domain.ValidationReport) {
+	settings, validationReport.Err = sb.configLoader.Load()
+	if validationReport.Err != nil {
+		return settings, validationReport
+	}
+
+	validationReport = sb.configValidator.Validate(settings)
+	return settings, validationReport
+}
+
+type RecoveryEngine struct {
 	parser              ParserInterface
 	cryptographicWorker CryptographicWorkerInterface
 }
 
-func NewApplication() Application {
-	configLoader := infrastructure.NewFlagLoader()
-	configValidator := infrastructure.NewConfigValidator()
-	ui := infrastructure.NewCli()
-	parser := infrastructure.NewParser()
-	cryptographicWorker := infrastructure.NewPbkdf2Worker()
-
-	return Application{configLoader, configValidator, ui, parser, cryptographicWorker}
+func NewRecoveryEngine(parser ParserInterface, cryptographicWorker CryptographicWorkerInterface) (recoveryEngine *RecoveryEngine) {
+	recoveryEngine = &RecoveryEngine{parser, cryptographicWorker}
+	return recoveryEngine
 }
 
-func (app Application) Run() {
-	settings, err := app.configLoader.Load()
+func (re RecoveryEngine) ParseMetadata(settings *domain.Config) (encryptionMetadata *domain.EncryptionMetadata, err error) {
+	var file *os.File
+	file, err = os.Open(settings.FilePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
-		os.Exit(1)
-	}
-
-	warnings, err := app.configValidator.Validate(settings)
-	if len(warnings) > 0 {
-		app.ui.ShowWarnings(warnings)
-	}
-	if err != nil {
-		app.ui.ShowErrors(err)
-		os.Exit(1)
-	}
-
-	app.ui.ShowConfiguration(settings)
-
-	file, err := os.Open(settings.FilePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening file: %v\n", err)
-		os.Exit(1)
+		return encryptionMetadata, err
 	}
 	defer file.Close()
 
-	encryptionMetadata, err := app.parser.Extract(file)
+	encryptionMetadata, err = re.parser.Extract(file)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing encryption metadata: %v\n", err)
-		os.Exit(1)
+		return encryptionMetadata, err
 	}
-	println()
 
-	app.ui.ShowEncryptionMetadata(encryptionMetadata)
+	return encryptionMetadata, err
+}
+
+func (re RecoveryEngine) Recovery() (password string) {
+	//TODO
+	return
 }

@@ -23,9 +23,8 @@ func NewConfigValidator() *Validator {
 	return &Validator{}
 }
 
-func (v *Validator) Validate(settings *domain.Config) (warings []string, err error) {
+func (v *Validator) Validate(settings *domain.Config) (validationReport domain.ValidationReport) {
 	var errs []error
-	var warnings []string
 
 	if strings.TrimSpace(settings.CharsetPath) == "" {
 		errs = append(errs, errors.New("charset path is required"))
@@ -40,48 +39,52 @@ func (v *Validator) Validate(settings *domain.Config) (warings []string, err err
 	}
 
 	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+		validationReport.Err = errors.Join(errs...)
+		return validationReport
 	}
 
 	resourcesWarnings, err := v.validateResources(settings)
-	warnings = append(warnings, resourcesWarnings...)
+	validationReport.Warnings = append(validationReport.Warnings, resourcesWarnings...)
 	if err != nil {
 		errs = append(errs, err)
 	}
 
 	complexityWarning, complexityError := v.validateComplexity(settings)
-	warnings = append(warnings, complexityWarning...)
+	validationReport.Warnings = append(validationReport.Warnings, complexityWarning...)
 	if complexityError != nil {
 		errs = append(errs, complexityError)
 	}
 
-	return warnings, errors.Join(errs...)
+	validationReport.Err = errors.Join(errs...)
+	return validationReport
 }
 
 func (v *Validator) validateResources(settings *domain.Config) (warnings []string, err error) {
 	warnings = make([]string, 0)
 	if settings.Workers <= 0 {
-		return nil, fmt.Errorf("workers must be positive (got %d)", settings.Workers)
+		err = fmt.Errorf("workers must be positive (got %d)", settings.Workers)
+		return warnings, err
 	}
 
 	cpus := runtime.NumCPU()
 	limit := int(float64(cpus) * workerUtilizationFactor)
 
 	if settings.Workers > limit {
-		return nil, fmt.Errorf("workers (%d) exceed CPU limit significantly (max allowed: %d)", settings.Workers, limit)
+		err = fmt.Errorf("workers (%d) exceed CPU limit significantly (max allowed: %d)", settings.Workers, limit)
+		return warnings, err
 	} else if settings.Workers > cpus {
-		warnings = append(warnings, fmt.Sprintf("workers (%d) exceed physical CPU count (%d). Performance may degrade", settings.Workers, cpus))
+		warnings = append(warnings, fmt.Sprintf("workers (%d) exceed physical CPU count (%d). Performance may degrade.", settings.Workers, cpus))
 	}
-	return warnings, nil
+
+	return warnings, err
 }
 
-func (v *Validator) validateComplexity(settings *domain.Config) ([]string, error) {
-	var warnings []string
-
+func (v *Validator) validateComplexity(settings *domain.Config) (warnings []string, err error) {
 	knownLen := utf8.RuneCountInString(settings.KnownPart)
 	remainingLength := settings.MaxLength - knownLen
 	if remainingLength <= 0 {
-		return nil, fmt.Errorf("max length (%d) cannot be smaller or equal to known part length (%d)", settings.MaxLength, len(settings.KnownPart))
+		err = fmt.Errorf("max length (%d) cannot be smaller or equal to known part length (%d)", settings.MaxLength, len(settings.KnownPart))
+		return warnings, err
 	}
 
 	total := settings.CalculateTotalCombinations()
@@ -90,10 +93,11 @@ func (v *Validator) validateComplexity(settings *domain.Config) ([]string, error
 	limitWarning := big.NewInt(warningThreshold)
 
 	if total.Cmp(limitError) >= 0 {
-		return nil, fmt.Errorf("total combinations (%s) exceeded the error threshold (%d)", total.String(), errorThreshold)
+		err = fmt.Errorf("total combinations (%s) exceeded the error threshold (%d)", total.String(), errorThreshold)
+		return warnings, err
 	}
 	if total.Cmp(limitWarning) >= 0 {
 		warnings = append(warnings, fmt.Sprintf("total combinations (%s) exceeded the warning threshold (%d)", total.String(), warningThreshold))
 	}
-	return warnings, nil
+	return warnings, err
 }

@@ -7,5 +7,5 @@ import (
 )
 
 type ParserInterface interface {
-	Extract(ioReader io.ReadSeeker) (*domain.EncryptionMetadata, error)
+	Extract(ioReader io.ReadSeeker) (encryptionMetadata *domain.EncryptionMetadata, err error)
 }

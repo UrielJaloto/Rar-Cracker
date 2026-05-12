@@ -5,6 +5,11 @@ import (
 	"unicode/utf8"
 )
 
+type ValidationReport struct {
+	Warnings []string
+	Err      error
+}
+
 type Config struct {
 	CharsetPath   string
 	FilePath      string
