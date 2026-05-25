@@ -52,7 +52,7 @@ func (p *Parser) Extract(ioReader io.ReadSeeker) (*domain.EncryptionMetadata, er
 		blockHeader, err := p.readBlockHeader()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return nil, errors.New("nenhuma criptografia encontrada neste arquivo")
+				return nil, errors.New("no encryption found in this archive")
 			}
 			return nil, err
 		}
@@ -163,7 +163,7 @@ func (p *Parser) readBlockHeader() (header *blockHeader, err error) {
 	}
 	bytesToReachExtraArea := unprocessedHeaderBytes - int64(extraAreaSize)
 	if bytesToReachExtraArea < 0 {
-		return header, errors.New("corrupted archive: extra area is larger then the header size")
+		return header, errors.New("corrupted archive: extra area is larger than the header size")
 	}
 
 	header.BytesToReachExtraArea = bytesToReachExtraArea

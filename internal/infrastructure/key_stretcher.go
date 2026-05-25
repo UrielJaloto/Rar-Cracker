@@ -22,7 +22,7 @@ func (p *pbkdf2KeyStretcher) StretchKey(ctx context.Context, passwordAttempt []b
 	//todo: optimize pbkf2 to use
 	stretchedKey, err = pbkdf2.Key(sha256.New, string(passwordAttempt), encryptionMetadata.Salt, encryptionMetadata.Iterations, 32)
 	if err != nil {
-		return make([]byte, 0), err
+		return stretchedKey, err
 	}
 	return stretchedKey, nil
 }
