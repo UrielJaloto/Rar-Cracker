@@ -14,7 +14,7 @@ func NewCli() *cli {
 	return &cli{}
 }
 
-func (c cli) ShowWarnings(warnings []string) {
+func (c *cli) ShowWarnings(warnings []string) {
 	fmt.Println("(WARNINGS):")
 	for _, w := range warnings {
 		fmt.Printf("    %s\n", w)
@@ -22,7 +22,7 @@ func (c cli) ShowWarnings(warnings []string) {
 	fmt.Println()
 }
 
-func (c cli) ShowErrors(err error) {
+func (c *cli) ShowErrors(err error) {
 	fmt.Fprintln(os.Stderr, "(ERRORS):")
 	for line := range strings.SplitSeq(err.Error(), "\n") {
 		if line != "" {
@@ -31,7 +31,7 @@ func (c cli) ShowErrors(err error) {
 	}
 }
 
-func (c cli) ShowConfiguration(config *domain.Config) {
+func (c *cli) ShowConfiguration(config *domain.Config) {
 	fmt.Printf("Loaded Configuration:\n")
 	fmt.Printf("    Charset Path   : %s\n", config.CharsetPath)
 	fmt.Printf("    File Path      : %s\n", config.FilePath)
@@ -42,7 +42,7 @@ func (c cli) ShowConfiguration(config *domain.Config) {
 	println()
 }
 
-func (c cli) ShowEncryptionMetadata(metaData *domain.EncryptionMetadata) {
+func (c *cli) ShowEncryptionMetadata(metaData *domain.EncryptionMetadata) {
 	fmt.Printf("Encryption Metadata:\n")
 	fmt.Printf("    Password Check     : %x\n", metaData.PasswordCheck)
 	fmt.Printf("    Salt               : %x\n", metaData.Salt)

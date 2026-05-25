@@ -16,7 +16,7 @@ func NewApplication(settingsBuilder *SettingsBuilder, ui UiInterface, recoveryEn
 	return Application{settingsBuilder, ui, recoveryEngine}
 }
 
-func (app Application) Run() (err error) {
+func (app *Application) Run() (err error) {
 	settings, validationReport := app.settingsBuilder.Build()
 
 	if len(validationReport.Warnings) > 0 {
@@ -50,7 +50,7 @@ func NewSettingsBuilder(configLoader ConfigLoaderInterface, configValidator Conf
 	return settingsBuilder
 }
 
-func (sb SettingsBuilder) Build() (settings *domain.Config, validationReport domain.ValidationReport) {
+func (sb *SettingsBuilder) Build() (settings *domain.Config, validationReport domain.ValidationReport) {
 	settings, validationReport.Err = sb.configLoader.Load()
 	if validationReport.Err != nil {
 		return settings, validationReport
@@ -70,7 +70,7 @@ func NewRecoveryEngine(parser ParserInterface, KeyStretcher KeyStretcherInterfac
 	return recoveryEngine
 }
 
-func (re RecoveryEngine) ParseMetadata(settings *domain.Config) (encryptionMetadata *domain.EncryptionMetadata, err error) {
+func (re *RecoveryEngine) ParseMetadata(settings *domain.Config) (encryptionMetadata *domain.EncryptionMetadata, err error) {
 	var file *os.File
 	file, err = os.Open(settings.FilePath)
 	if err != nil {
@@ -86,7 +86,7 @@ func (re RecoveryEngine) ParseMetadata(settings *domain.Config) (encryptionMetad
 	return encryptionMetadata, err
 }
 
-func (re RecoveryEngine) Recovery() (password string) {
+func (re *RecoveryEngine) Recovery() (password string) {
 	//TODO
 	return
 }

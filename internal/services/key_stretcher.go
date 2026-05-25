@@ -7,5 +7,5 @@ import (
 )
 
 type KeyStretcherInterface interface {
-	StretchKey(ctx context.Context, passwordAttempt string, encryptionMetadata *domain.EncryptionMetadata) (stretchedKey []byte, err error)
+	StretchKey(ctx context.Context, passwordAttempt []byte, encryptionMetadata *domain.EncryptionMetadata) (stretchedKey []byte, err error)
 }

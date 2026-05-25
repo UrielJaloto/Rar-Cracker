@@ -15,7 +15,7 @@ import (
 type pbkdf2TestCase struct {
 	name        string
 	ctx         context.Context
-	attempt     string
+	attempt     []byte
 	wantError   bool
 	wantEqual   bool
 	targetError error
@@ -26,9 +26,9 @@ func TestPbkdf2Worker_StretchKey(t *testing.T) {
 	service := infrastructure.NewPbkdf2KeyStretcher()
 	salt := []byte("saltsaltsalt")
 	iterations := 32768
-	correctPassword := "mypassword123"
+	correctPassword := []byte("mypassword123")
 
-	expectedKey, _ := pbkdf2.Key(sha256.New, correctPassword, salt, iterations, 32)
+	expectedKey, _ := pbkdf2.Key(sha256.New, string(correctPassword), salt, iterations, 32)
 
 	metadata := &domain.EncryptionMetadata{
 		Salt:          salt,
@@ -51,14 +51,14 @@ func TestPbkdf2Worker_StretchKey(t *testing.T) {
 		{
 			name:      "Incorrect password",
 			ctx:       context.Background(),
-			attempt:   "wrongpassword",
+			attempt:   []byte("wrongpassword"),
 			wantError: false,
 			wantEqual: false,
 		},
 		{
 			name:        "Context canceled",
 			ctx:         canceledCtx,
-			attempt:     "anypassword",
+			attempt:     []byte("anypassword"),
 			wantError:   true,
 			wantEqual:   false,
 			targetError: context.Canceled,
@@ -66,7 +66,7 @@ func TestPbkdf2Worker_StretchKey(t *testing.T) {
 		{
 			name:      "Empty password attempt",
 			ctx:       context.Background(),
-			attempt:   "",
+			attempt:   []byte(""),
 			wantError: false,
 			wantEqual: false,
 		},
@@ -103,13 +103,13 @@ func TestPbkdf2Worker_StretchKey(t *testing.T) {
 	}
 }
 
-func BenchmarkPbkdf2Worker_TryToBreak(b *testing.B) {
+func BenchmarkPbkdf2Worker_StretchKey(b *testing.B) {
 	service := infrastructure.NewPbkdf2KeyStretcher()
-	password := "benchmark_password"
+	password := []byte("benchmark_password")
 	salt := []byte("salt123456789012")
 	iterations := 32768
 
-	expectedKey, _ := pbkdf2.Key(sha256.New, password, salt, iterations, 32)
+	expectedKey, _ := pbkdf2.Key(sha256.New, string(password), salt, iterations, 32)
 
 	metadata := &domain.EncryptionMetadata{
 		Salt:          salt,

@@ -1,0 +1,48 @@
+package services
+
+import (
+	"context"
+	"errors"
+	"slices"
+
+	"github.com/UrielJaloto/surgical-rar-recovery/internal/domain"
+)
+
+type RecoveryWorker struct {
+	keyStretcher      KeyStretcherInterface
+	passwordGenerator PasswordGeneratorInterface
+}
+
+func NewRecoveryWorker(keyStretcher KeyStretcherInterface, passwordGenerator PasswordGeneratorInterface) *RecoveryWorker {
+	return &RecoveryWorker{keyStretcher, passwordGenerator}
+}
+
+func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata *domain.EncryptionMetadata, chunk *domain.Chunk) (password []byte, err error) {
+	buffer := make([]byte, 256)
+	var stretchedKey []byte
+
+	for iteration := chunk.StartIndex; iteration < chunk.EndIndex; iteration++ {
+		if err = ctx.Err(); err != nil {
+			return password, err
+		}
+
+		err = rw.passwordGenerator.GeneratePassword(ctx, iteration, chunk.VariableLen, chunk.KnownPartIndex, buffer)
+		if err != nil {
+			return password, err
+		}
+		passwordAttempt := buffer[:chunk.TotalLen]
+
+		if stretchedKey, err = rw.keyStretcher.StretchKey(ctx, passwordAttempt, encryptionMetadata); err != nil {
+			return password, err
+		}
+
+		if slices.Equal(stretchedKey, encryptionMetadata.PasswordCheck) {
+			password = make([]byte, chunk.TotalLen)
+			copy(password, passwordAttempt)
+			return password, err
+		}
+	}
+
+	err = errors.New("wrong password")
+	return password, err
+}
