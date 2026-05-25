@@ -86,7 +86,7 @@ func (re *RecoveryEngine) ParseMetadata(settings *domain.Config) (encryptionMeta
 	return encryptionMetadata, err
 }
 
-func (re *RecoveryEngine) Recovery() (password string) {
+func (re *RecoveryEngine) Recovery() (password []byte) {
 	//TODO
 	return
 }
