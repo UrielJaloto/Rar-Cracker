@@ -61,12 +61,12 @@ func (sb SettingsBuilder) Build() (settings *domain.Config, validationReport dom
 }
 
 type RecoveryEngine struct {
-	parser              ParserInterface
-	cryptographicWorker CryptographicWorkerInterface
+	parser       ParserInterface
+	KeyStretcher KeyStretcherInterface
 }
 
-func NewRecoveryEngine(parser ParserInterface, cryptographicWorker CryptographicWorkerInterface) (recoveryEngine *RecoveryEngine) {
-	recoveryEngine = &RecoveryEngine{parser, cryptographicWorker}
+func NewRecoveryEngine(parser ParserInterface, KeyStretcher KeyStretcherInterface) (recoveryEngine *RecoveryEngine) {
+	recoveryEngine = &RecoveryEngine{parser, KeyStretcher}
 	return recoveryEngine
 }
 

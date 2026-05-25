@@ -5,6 +5,7 @@ import (
 	"crypto/pbkdf2"
 	"crypto/sha256"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/UrielJaloto/surgical-rar-recovery/internal/domain"
@@ -16,12 +17,13 @@ type pbkdf2TestCase struct {
 	ctx         context.Context
 	attempt     string
 	wantError   bool
+	wantEqual   bool
 	targetError error
 	errMessage  string
 }
 
-func TestPbkdf2Worker_TryToBreak(t *testing.T) {
-	worker := infrastructure.NewPbkdf2Worker()
+func TestPbkdf2Worker_StretchKey(t *testing.T) {
+	service := infrastructure.NewPbkdf2KeyStretcher()
 	salt := []byte("saltsaltsalt")
 	iterations := 32768
 	correctPassword := "mypassword123"
@@ -42,20 +44,23 @@ func TestPbkdf2Worker_TryToBreak(t *testing.T) {
 			name:       "Correct password found",
 			ctx:        context.Background(),
 			attempt:    correctPassword,
-			wantError:  true,
+			wantError:  false,
 			errMessage: "password found",
+			wantEqual:  true,
 		},
 		{
 			name:      "Incorrect password",
 			ctx:       context.Background(),
 			attempt:   "wrongpassword",
 			wantError: false,
+			wantEqual: false,
 		},
 		{
 			name:        "Context canceled",
 			ctx:         canceledCtx,
 			attempt:     "anypassword",
 			wantError:   true,
+			wantEqual:   false,
 			targetError: context.Canceled,
 		},
 		{
@@ -63,16 +68,23 @@ func TestPbkdf2Worker_TryToBreak(t *testing.T) {
 			ctx:       context.Background(),
 			attempt:   "",
 			wantError: false,
+			wantEqual: false,
 		},
 	}
 
 	checkTest := func(t *testing.T, testCase pbkdf2TestCase) {
 		t.Helper()
 
-		err := worker.TryToBreak(testCase.ctx, testCase.attempt, metadata)
+		stretchedKey, err := service.StretchKey(testCase.ctx, testCase.attempt, metadata)
+
+		isEqual := slices.Equal(stretchedKey, metadata.PasswordCheck)
 
 		if (err != nil) != testCase.wantError {
 			t.Fatalf("expected error: %t, got: %v", testCase.wantError, err)
+		}
+
+		if (isEqual != false) != testCase.wantEqual {
+			t.Fatalf("expected equal: %t, got: %v", testCase.wantEqual, isEqual)
 		}
 
 		if testCase.targetError != nil && !errors.Is(err, testCase.targetError) {
@@ -92,7 +104,7 @@ func TestPbkdf2Worker_TryToBreak(t *testing.T) {
 }
 
 func BenchmarkPbkdf2Worker_TryToBreak(b *testing.B) {
-	worker := infrastructure.NewPbkdf2Worker()
+	service := infrastructure.NewPbkdf2KeyStretcher()
 	password := "benchmark_password"
 	salt := []byte("salt123456789012")
 	iterations := 32768
@@ -110,6 +122,6 @@ func BenchmarkPbkdf2Worker_TryToBreak(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = worker.TryToBreak(ctx, password, metadata)
+		_, _ = service.StretchKey(ctx, password, metadata)
 	}
 }

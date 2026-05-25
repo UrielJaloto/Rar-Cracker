@@ -44,7 +44,8 @@ Executa o teste de cada senha candidata.
 
 ### Etapa 4 — Gerador de Senhas  
 Produz senhas válidas a partir da parte conhecida e do charset.  
-- Envia para os workers por canais.  
+- Gera as senhas dentro do worker que vai derivar para ser mais otimizado
+- Senhas geradas para blocos de 50.000 senhas cada
 - Suporta retomar a execução usando estado salvo.  
 
 ### Etapa 5 — Orquestração  

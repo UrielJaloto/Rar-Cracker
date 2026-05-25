@@ -17,7 +17,7 @@ func main() {
 
 	recoveryEngine := services.NewRecoveryEngine(
 		infrastructure.NewParser(),
-		infrastructure.NewPbkdf2Worker(),
+		infrastructure.NewPbkdf2KeyStretcher(),
 	)
 
 	application := services.NewApplication(
