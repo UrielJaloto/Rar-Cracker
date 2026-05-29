@@ -26,7 +26,7 @@ func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata 
 			return password, err
 		}
 
-		err = rw.passwordGenerator.GeneratePassword(ctx, iteration, chunk.VariableLen, chunk.KnownPartIndex, buffer)
+		err = rw.passwordGenerator.GeneratePassword(ctx, buffer, chunk, iteration)
 		if err != nil {
 			return password, err
 		}
