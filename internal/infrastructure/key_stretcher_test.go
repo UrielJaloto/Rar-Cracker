@@ -1,7 +1,6 @@
 package infrastructure_test
 
 import (
-	"context"
 	"crypto/pbkdf2"
 	"crypto/sha256"
 	"errors"
@@ -14,7 +13,6 @@ import (
 
 type pbkdf2TestCase struct {
 	name        string
-	ctx         context.Context
 	attempt     []byte
 	wantError   bool
 	wantEqual   bool
@@ -36,13 +34,9 @@ func TestPbkdf2Worker_StretchKey(t *testing.T) {
 		PasswordCheck: expectedKey,
 	}
 
-	canceledCtx, cancel := context.WithCancel(context.Background())
-	cancel()
-
 	tests := []pbkdf2TestCase{
 		{
 			name:       "Correct password found",
-			ctx:        context.Background(),
 			attempt:    correctPassword,
 			wantError:  false,
 			errMessage: "password found",
@@ -50,22 +44,12 @@ func TestPbkdf2Worker_StretchKey(t *testing.T) {
 		},
 		{
 			name:      "Incorrect password",
-			ctx:       context.Background(),
 			attempt:   []byte("wrongpassword"),
 			wantError: false,
 			wantEqual: false,
 		},
 		{
-			name:        "Context canceled",
-			ctx:         canceledCtx,
-			attempt:     []byte("anypassword"),
-			wantError:   true,
-			wantEqual:   false,
-			targetError: context.Canceled,
-		},
-		{
 			name:      "Empty password attempt",
-			ctx:       context.Background(),
 			attempt:   []byte(""),
 			wantError: false,
 			wantEqual: false,
@@ -75,7 +59,7 @@ func TestPbkdf2Worker_StretchKey(t *testing.T) {
 	checkTest := func(t *testing.T, testCase pbkdf2TestCase) {
 		t.Helper()
 
-		stretchedKey, err := service.StretchKey(testCase.ctx, testCase.attempt, metadata)
+		stretchedKey, err := service.StretchKey(testCase.attempt, metadata)
 
 		isEqual := slices.Equal(stretchedKey, metadata.PasswordCheck)
 
@@ -117,11 +101,9 @@ func BenchmarkPbkdf2Worker_StretchKey(b *testing.B) {
 		PasswordCheck: expectedKey,
 	}
 
-	ctx := context.Background()
-
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = service.StretchKey(ctx, password, metadata)
+		_, _ = service.StretchKey(password, metadata)
 	}
 }

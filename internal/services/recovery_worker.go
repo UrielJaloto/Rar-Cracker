@@ -17,7 +17,7 @@ func NewRecoveryWorker(keyStretcher KeyStretcherInterface, passwordGenerator Pas
 	return &RecoveryWorker{keyStretcher, passwordGenerator}
 }
 
-func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata *domain.EncryptionMetadata, chunk *domain.Chunk) (password []byte, err error) {
+func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata *domain.EncryptionMetadata, config *domain.Config, chunk *domain.Chunk) (password []byte, err error) {
 	buffer := make([]byte, 256)
 	var stretchedKey []byte
 
@@ -26,13 +26,20 @@ func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata 
 			return password, err
 		}
 
-		err = rw.passwordGenerator.GeneratePassword(ctx, buffer, chunk, iteration)
+		PasswordGeneratorParams := domain.PasswordGeneratorParams{
+			Buffer:    buffer,
+			Charset:   config.Charset,
+			Iteration: iteration,
+			VarLen:    chunk.VariableLen,
+		}
+
+		err = rw.passwordGenerator.GeneratePassword(&PasswordGeneratorParams)
 		if err != nil {
 			return password, err
 		}
 		passwordAttempt := buffer[:chunk.TotalLen]
 
-		if stretchedKey, err = rw.keyStretcher.StretchKey(ctx, passwordAttempt, encryptionMetadata); err != nil {
+		if stretchedKey, err = rw.keyStretcher.StretchKey(passwordAttempt, encryptionMetadata); err != nil {
 			return password, err
 		}
 
