@@ -18,8 +18,10 @@ func NewRecoveryWorker(keyStretcher KeyStretcherInterface, passwordGenerator Pas
 }
 
 func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata *domain.EncryptionMetadata, config *domain.Config, chunk *domain.Chunk) (password []byte, err error) {
-	buffer := make([]byte, 256)
 	var stretchedKey []byte
+
+	buffer := make([]byte, chunk.TotalLen)
+	copy(buffer[chunk.KnownPartIndex:], []byte(config.KnownPart))
 
 	for iteration := chunk.StartIndex; iteration < chunk.EndIndex; iteration++ {
 		if err = ctx.Err(); err != nil {
@@ -30,13 +32,10 @@ func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata 
 			Buffer:    buffer,
 			Charset:   config.Charset,
 			Iteration: iteration,
-			VarLen:    chunk.VariableLen,
+			Chunk:     chunk,
 		}
 
-		err = rw.passwordGenerator.GeneratePassword(&PasswordGeneratorParams)
-		if err != nil {
-			return password, err
-		}
+		rw.passwordGenerator.GeneratePassword(&PasswordGeneratorParams)
 		passwordAttempt := buffer[:chunk.TotalLen]
 
 		if stretchedKey, err = rw.keyStretcher.StretchKey(passwordAttempt, encryptionMetadata); err != nil {

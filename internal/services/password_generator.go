@@ -5,5 +5,5 @@ import (
 )
 
 type PasswordGeneratorInterface interface {
-	GeneratePassword(params *domain.PasswordGeneratorParams) (err error)
+	GeneratePassword(params *domain.PasswordGeneratorParams)
 }
