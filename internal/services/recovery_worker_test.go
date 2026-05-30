@@ -33,8 +33,6 @@ func TestRecoveryWorker_TryToRecovery(t *testing.T) {
 		fakeHash:         fakeHash,
 	}
 
-	worker := services.NewRecoveryWorker(stretcher, generator)
-
 	metadata := &domain.EncryptionMetadata{
 		PasswordCheck: fakeHash,
 	}
@@ -52,9 +50,10 @@ func TestRecoveryWorker_TryToRecovery(t *testing.T) {
 		EndIndex:       1000000,
 	}
 
+	worker := services.NewRecoveryWorker(stretcher, generator, metadata, config)
 	ctx := context.Background()
 
-	password, err := worker.TryToRecovery(ctx, metadata, config, chunk)
+	password, err := worker.TryToRecovery(ctx, chunk)
 
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -69,7 +68,6 @@ func BenchmarkRecoveryWorker_RealRARScenario(b *testing.B) {
 	charset := []rune("abcdefghijklmnopqrstuvwxyz")
 	generator := infrastructure.NewPasswordGenerator()
 	stretcher := infrastructure.NewPbkdf2KeyStretcher()
-	worker := services.NewRecoveryWorker(stretcher, generator)
 
 	salt := []byte("1234567890123456")
 	iterations := 32768
@@ -88,6 +86,7 @@ func BenchmarkRecoveryWorker_RealRARScenario(b *testing.B) {
 		KnownPart: "",
 	}
 
+	worker := services.NewRecoveryWorker(stretcher, generator, metadata, config)
 	ctx := context.Background()
 
 	b.ResetTimer()
@@ -101,6 +100,6 @@ func BenchmarkRecoveryWorker_RealRARScenario(b *testing.B) {
 			EndIndex:       uint64(i + 1),
 		}
 
-		_, _ = worker.TryToRecovery(ctx, metadata, config, chunk)
+		_, _ = worker.TryToRecovery(ctx, chunk)
 	}
 }

@@ -9,19 +9,21 @@ import (
 )
 
 type RecoveryWorker struct {
-	keyStretcher      KeyStretcherInterface
-	passwordGenerator PasswordGeneratorInterface
+	keyStretcher       KeyStretcherInterface
+	passwordGenerator  PasswordGeneratorInterface
+	encryptionMetadata *domain.EncryptionMetadata
+	config             *domain.Config
 }
 
-func NewRecoveryWorker(keyStretcher KeyStretcherInterface, passwordGenerator PasswordGeneratorInterface) *RecoveryWorker {
-	return &RecoveryWorker{keyStretcher, passwordGenerator}
+func NewRecoveryWorker(keyStretcher KeyStretcherInterface, passwordGenerator PasswordGeneratorInterface, encryptionMetadata *domain.EncryptionMetadata, config *domain.Config) *RecoveryWorker {
+	return &RecoveryWorker{keyStretcher, passwordGenerator, encryptionMetadata, config}
 }
 
-func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata *domain.EncryptionMetadata, config *domain.Config, chunk *domain.Chunk) (password []byte, err error) {
+func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, chunk *domain.Chunk) (password []byte, err error) {
 	var stretchedKey []byte
 
 	buffer := make([]byte, chunk.TotalLen)
-	copy(buffer[chunk.KnownPartIndex:], []byte(config.KnownPart))
+	copy(buffer[chunk.KnownPartIndex:], []byte(rw.config.KnownPart))
 
 	for iteration := chunk.StartIndex; iteration < chunk.EndIndex; iteration++ {
 		if err = ctx.Err(); err != nil {
@@ -30,7 +32,7 @@ func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata 
 
 		PasswordGeneratorParams := domain.PasswordGeneratorParams{
 			Buffer:    buffer,
-			Charset:   config.Charset,
+			Charset:   rw.config.Charset,
 			Iteration: iteration,
 			Chunk:     chunk,
 		}
@@ -38,11 +40,11 @@ func (rw *RecoveryWorker) TryToRecovery(ctx context.Context, encryptionMetadata 
 		rw.passwordGenerator.GeneratePassword(&PasswordGeneratorParams)
 		passwordAttempt := buffer[:chunk.TotalLen]
 
-		if stretchedKey, err = rw.keyStretcher.StretchKey(passwordAttempt, encryptionMetadata); err != nil {
+		if stretchedKey, err = rw.keyStretcher.StretchKey(passwordAttempt, rw.encryptionMetadata); err != nil {
 			return password, err
 		}
 
-		if slices.Equal(stretchedKey, encryptionMetadata.PasswordCheck) {
+		if slices.Equal(stretchedKey, rw.encryptionMetadata.PasswordCheck) {
 			password = make([]byte, chunk.TotalLen)
 			copy(password, passwordAttempt)
 			return password, err
